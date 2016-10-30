@@ -1,0 +1,92 @@
+
+Laimonas Beniušis 
+
+
+// SYMBOLS
+
+<ascii>                         ::= <symbol> | <letter> | <digit>
+<word>                          ::= <ascii> { <ascii> }
+<letter>                        ::= <upcase> | <lowcase>
+<digit>                         ::= <digit-zero> | <digit-nonzero>
+<digit-non-zero>                ::= '1' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9'
+<digit-zero>                    ::= '0'
+<symbol>                        ::= '!' | '"' | '#' | '$' | '%' | '&' | "'" | '(' | ')' | '*' | '+' | ',' | '-' | '.' | '/' | ':' | ';' | '<' | '=' | '>' | '?' | '@' | '[' | '\' | ']' | '^' | '_' | '`' | '{' | '|' | '}' | '~' | ' '
+<upcase>                        ::= 'A' | 'B' | 'C' | 'D' | 'E' | 'F' | 'G' | 'H' | 'I' | 'J' | 'K' | 'L' | 'M' | 'N' | 'O' | 'P' | 'Q' | 'R' | 'S' | 'T' | 'U' | 'V' | 'W' | 'X' | 'Y' | 'Z'
+<lowcase>                       ::= 'a' | 'b' | 'c' | 'd' | 'e' | 'f' | 'g' | 'h' | 'i' | 'j' | 'k' | 'l' | 'm' | 'n' | 'o' | 'p' | 'q' | 'r' | 's' | 't' | 'u' | 'v' | 'w' | 'x' | 'y' | 'z'
+
+// TYPES
+<type>                          ::= 'boolean' | 'int' | 'float' | 'string'
+<fn-type>                       ::= 'void' | <type> | <type> <array-literal>
+<type-literal>                  ::=  <boolean-literal> | <integer-literal> | <float-literal> | <string-literal> | <null-literal>
+<string-literal>                ::= '"' [ <word> ] '"'
+<null-literal>                  ::= 'null'
+<integer-literal>               ::= <digit-nonzero> { <digit> } | <digit-zero>
+<float-literal>                 ::= <digit> { <digit> } '.' <digit> { <digit> }
+<boolean-literal>               ::= 'false' | 'true'
+<array-literal>                 ::= '[]'
+
+// OPERATORS
+<assignment>                    ::= <assignment-operator> | <assignment-operator-adv>
+<assignment-operator>           ::= '='
+<assignment-operator-adv>       ::= <assignment-operator> <binary-operator>
+<binary-operator>               ::= <mult-or-div-operator> | <add-or-subtract-operator>
+<logic-operator>                ::= '&&' | '||'
+<comparison-operator>           ::= '==' | '<' | '<=' | '>' | '>=' | '!='
+<mult-or-div-operator>          ::= '*' | '/'
+<add-or-subtract-operator>      ::= '+' | '-'
+
+
+// EXPRESSIONS
+<exp1>                          ::= <exp2> [ <logic-operator> <exp1> ]
+<exp2>                          ::= <exp3> [ <comparison-operator> <exp2> ]
+<exp3>                          ::= <term> [ <add-or-subtract-operator> <exp3> ]
+<term>                          ::= <factor> [ <mult-or-div-operator> <term> ]
+<factor>                        ::= '(' <exp1> ')' | <name> ['['<exp1>']'] | <type-literal> | <function-call> | '!' <exp1>
+
+// DECLARATION
+<declaration>                   ::= <constant-declaration> | <variable-declaration> | <array-declaration> | <function-declaration>
+<constant-declaration>          ::= 'final ' <type> <name> <assignment-operator> <value> ';'
+<variable-declaration>          ::= <variable-declaration-no-semi> ';'
+<variable-declaration-no-semi>  ::= <variable-declare> | <variable-daclare> <value-assignment>
+<variable-declare>              ::= <type>' '<name>
+
+<array-declaration>             ::= <type> '['<integer>'] ' <name>';' | <type> <array-literal>' ' <name> ';'
+
+<function-declaration>          ::= 'def ' <fn-type> <name> '(' [ <function-param-list> ]')' <assignment-operator> <block-body>
+<function-param-list>           ::= <function-parameter> { ',' <function-parameter> } 
+<function-parameter>            ::= <type>['[]'] <name>
+
+
+// STATEMENT
+
+<block-body>                    ::= '{' <block> '}'
+<block>                         ::= { <statement> }
+<statement>                     ::= <inline-stmt> ';' | <exit-stmt> ';' | <flow-stmt>
+<inline-stmt>                   ::= <simple-stmt> | <exp1>
+<simple-stmt>                   ::= <declaration>  | <name> <value-assignment> | <io-stmt> 
+
+<function-call>                 ::= <name> '(' [ <call-param-list> ] ')'
+<call-param-list>               ::= <value> { ',' <value> }
+<call-param-list-BNF>           ::= <value> | <call-param-list-BNF> ',' <value> 
+<exit-stmt>                     ::= <return-stmt> | <break-stmt> | <continue-stmt>
+<return-stmt>                   ::= 'return' [ <value> ]
+<break-stmt>                    ::= 'break'
+<continue-stmt>                 ::= 'continue'
+
+<io-stmt>                       ::= <input-stmt> | <output-stmt>
+<input-stmt>                    ::= [ <type> ] <name> <assignment-operator> 'input' '(' [ <value> ] ')'
+<output-stmt>                   ::= 'print' <value>
+
+<flow-stmt>                     ::= <for-loop> | <while-loop> | <if-stmt>
+<for-loop>                      ::= 'for' '('[<value-assignment>] ';' <value> ';' [<inline-stmt-no-semi>] ')' <block-body>
+<while-loop>                    ::= 'while' '(' <value> ')' <block-body>
+<if-stmt>                       ::= 'if' '(' <value> ')' <block-body> [ 'else' ( <block-body> | <if-stmt> ) ]
+<if-stmt-BNF>                   ::= 'if' '(' <value> ')' <block-body> | 'if' '(' <value> ')' <block-body>  'else'  <block-body> |'if' '(' <value> ')' <block-body>  'else' <if-stmt-BNF> 
+
+
+// OTHER
+<file>                          ::= <block>
+<value-assignment>              ::= <assignment> <value> | '[' <value> ']' <assignment> <value>
+<value>                         ::= <exp1>
+<name>                          ::= <letter> { <letter> | <digit> } 
+
