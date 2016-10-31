@@ -26,4 +26,6 @@ if __name__ == '__main__':
     # print(lexer.tokenList)
     for token in lexer.tokenList:
         print(token)
+
+    # print(Token.getSortedKeys(Token.other))
     print("END")

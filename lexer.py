@@ -17,6 +17,18 @@ class Token(object):
     keywords = dict()
     other = dict()
     @staticmethod
+    def getSortedKeys(diction:dict):
+        valueArray = list()
+        keyArray = list()
+        result = list()
+        for info in diction.items():
+            keyArray.append([info[0],info[1]])
+
+        keyArray.sort(key=lambda x: len(x[1]), reverse=True)
+        for key in keyArray:
+            result.append(key[0])
+        return result
+    @staticmethod
     def get(key):
         return Token.tokens.get(key)
 
@@ -42,29 +54,9 @@ class Token(object):
             if value[0].isalpha():
                 Token.setKeyword(key)
 
-
-        # Token.setKeyword("FINAL")
-        # Token.setKeyword("BOOL")
-        # Token.setKeyword("INT")
-        # Token.setKeyword("FLOAT")
-        # Token.setKeyword("STRING")
-        # Token.setKeyword("VOID")
-        # Token.setKeyword("DEF")
-        # Token.setKeyword("RETURN")
-        # Token.setKeyword("BREAK")
-        # Token.setKeyword("CONTINUE")
-        # Token.setKeyword("PRINT")
-        # Token.setKeyword("INPUT")
-        # Token.setKeyword("TRUE")
-        # Token.setKeyword("FALSE")
-        # Token.setKeyword("NULL")
-        # Token.setKeyword("FOR")
-        # Token.setKeyword("WHILE")
         for tokenKey in Token.keys:
             if not Token.keywords.__contains__(tokenKey):
                 Token.other.setdefault(tokenKey,Token.get(tokenKey))
-
-
 
 
 
@@ -190,7 +182,7 @@ class Lexer(object):
     def string(self):
         result = ""
         self.advance()
-        while self.currentChar() is not None and not self.tryToMatch(Token.get("STRINGEND")):
+        while self.currentChar() is not None and not self.tryToMatch(Token.get("STRINGR")):
             result += self.currentChar()
             self.advance()
         self.advance()
@@ -203,7 +195,7 @@ class Lexer(object):
             result += self.currentChar()
             self.advance()
         # no longer read
-        for key in Token.keywords.keys():
+        for key in Token.getSortedKeys(Token.keywords):
             tokenValue = Token.get(key)
             if result == tokenValue:
                 token = Token(key,tokenValue)
@@ -237,9 +229,9 @@ class Lexer(object):
                 self.advance(len(Token.get("COMMENTSTART")))
                 self.skip_comment()
                 continue
-            if self.tryToMatch(Token.get("STRINGSTART")):
+            if self.tryToMatch(Token.get("STRINGL")):
                 return self.string()
-            for key in Token.other.keys():
+            for key in Token.getSortedKeys(Token.other):
                 tokenValue = Token.get(key)
                 if self.tryToMatch(tokenValue):
                     self.advance(len(tokenValue))

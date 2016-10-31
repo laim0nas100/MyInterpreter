@@ -18,8 +18,8 @@ INT int
 FLOAT float
 FLOATSIGN .
 STRING string
-STRINGSTART "
-STRINGEND "
+STRINGL "
+STRINGR "
 VOID void
 DEF def
 FOR for
