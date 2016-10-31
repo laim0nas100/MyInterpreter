@@ -1,9 +1,11 @@
+" \"bkka
+ghjhg \"hj"
 {
     int i = 10;
     int i2 = 12;
     int ok = i2 + i;
     int[20] array;
-    final string s = "this is a string";
+    final string s ="this is a string";
     boolean t = 1 == 2
     for( int i =0; i<10; i+=1){
         print("some string");
@@ -11,7 +13,9 @@
         print(true)
         o = false /* ignore everything
         until you see this
-        symbol  float f = 5 - 1.01
+        symbol
+
+         float f = 5 - 1.01
         no semantic checking yet
         if(true &something& false){
         //do something
@@ -21,3 +25,4 @@
 
     }
 }
+*/

@@ -99,7 +99,7 @@ class Lexer(object):
         self.tokenList = list()
 
     def error(self):
-        raise Exception('Invalid character'+self.currentChar())
+        Token("LEXER_ERROR",'Invalid character'+self.currentChar())
 
     def currentChar(self):
         try:
@@ -182,11 +182,18 @@ class Lexer(object):
     def string(self):
         result = ""
         self.advance()
-        while self.currentChar() is not None and not self.tryToMatch(Token.get("STRINGR")):
+        while self.currentChar() is not None:
+            if self.tryToMatch(Token.get("ESC")):
+                self.advance(len(Token.get("ESC")))
+                print("found"+self.currentChar())
+
             result += self.currentChar()
             self.advance()
-        self.advance()
-        return Token("STRING_CONST", str(result))
+            if self.tryToMatch(Token.get("STRINGR")):
+
+                self.advance()
+                return Token("STRING_CONST", str(result))
+        return Token("LEXER_ERROR","String not terminated")
 
     def id(self):
         """Handle identifiers and reserved keywords"""
@@ -262,6 +269,9 @@ class Lexer(object):
         while token.type != "EOF":
             self.tokenList.append(token)
             token = self.getNextToken()
+            if token.type == "LEXER_ERROR":
+                self.tokenList.append(token)
+                break
         if output is not None:
             file = open(output,"w")
             for token in self.tokenList:

@@ -22,10 +22,9 @@ if __name__ == '__main__':
     print()
     print(Token.keywords)
     print(Token.other)
-    lexer.lexerize()
+    lexer.lexerize("out0.txt")
     # print(lexer.tokenList)
-    for token in lexer.tokenList:
-        print(token)
+
 
     # print(Token.getSortedKeys(Token.other))
     print("END")
