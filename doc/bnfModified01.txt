@@ -16,7 +16,7 @@ Laimonas Beniušis
 
 // TYPES
 <type>                          ::= 'boolean' | 'int' | 'float' | 'string'
-<fn-type>                       ::= 'void' | <type> | <type> <array-literal>
+<fn-type>                       ::=  <type> | <type> <array-literal>
 <type-literal>                  ::=  <boolean-literal> | <integer-literal> | <float-literal> | <string-literal> | <null-literal>
 <string-literal>                ::= '"' [ <word> ] '"'
 <null-literal>                  ::= 'null'
@@ -44,24 +44,25 @@ Laimonas Beniušis
 <factor>                        ::= '(' <exp1> ')' | <name> ['['<exp1>']'] | <type-literal> | <function-call> | '!' <exp1>
 
 // DECLARATION
-<declaration>                   ::= <constant-declaration> | <variable-declaration> | <array-declaration> | <function-declaration>
-<constant-declaration>          ::= 'final ' <type> <name> <assignment-operator> <value> ';'
+<declaration>                   ::= //<constant-declaration> |
+                                    <variable-declaration> | <array-declaration> | <function-declaration>
+//<constant-declaration>        ::= 'final ' <type> <name> <assignment-operator> <value> ';'
 <variable-declaration>          ::= <variable-declaration-no-semi> ';'
 <variable-declaration-no-semi>  ::= <variable-declare> | <variable-daclare> <value-assignment>
 <variable-declare>              ::= <type>' '<name>
 
 <array-declaration>             ::= <type> '['<integer>'] ' <name>';' | <type> <array-literal>' ' <name> ';'
 
-<function-declaration>          ::= 'def ' <fn-type> <name> '(' [ <function-param-list> ]')' <assignment-operator> <block-body>
+<function-declaration>          ::= 'def ' <fn-type> <name> '(' [ <function-param-list> ]')' <assignment-operator> <block>
 <function-param-list>           ::= <function-parameter> { ',' <function-parameter> } 
 <function-parameter>            ::= <type>['[]'] <name>
 
 
 // STATEMENT
 
-<block-body>                    ::= '{' <block> '}'
-<block>                         ::= { <statement> }
-<statement>                     ::= <inline-stmt> ';' | <exit-stmt> ';' | <flow-stmt>
+<block>                         ::= '{' <block-body> '}'
+<block-body>                    ::= { <statement> }
+<statement>                     ::= <inline-stmt> ';' | <exit-stmt> ';' | <flow-stmt> ';'
 <inline-stmt>                   ::= <simple-stmt> | <exp1>
 <simple-stmt>                   ::= <declaration>  | <name> <value-assignment> | <io-stmt> 
 
@@ -78,10 +79,10 @@ Laimonas Beniušis
 <output-stmt>                   ::= 'print' <value>
 
 <flow-stmt>                     ::= <for-loop> | <while-loop> | <if-stmt>
-<for-loop>                      ::= 'for' '('[<value-assignment>] ';' <value> ';' [<inline-stmt-no-semi>] ')' <block-body>
-<while-loop>                    ::= 'while' '(' <value> ')' <block-body>
-<if-stmt>                       ::= 'if' '(' <value> ')' <block-body> [ 'else' ( <block-body> | <if-stmt> ) ]
-<if-stmt-BNF>                   ::= 'if' '(' <value> ')' <block-body> | 'if' '(' <value> ')' <block-body>  'else'  <block-body> |'if' '(' <value> ')' <block-body>  'else' <if-stmt-BNF> 
+<for-loop>                      ::= 'for' '('[<value-assignment>] ';' <value> ';' [<inline-stmt-no-semi>] ')' <block>
+<while-loop>                    ::= 'while' '(' <value> ')' <block>
+<if-stmt>                       ::= 'if' '(' <value> ')' <block> [ 'else' ( <block> | <if-stmt> ) ]
+<if-stmt-BNF>                   ::= 'if' '(' <value> ')' <block> | 'if' '(' <value> ')' <block>  'else'  <block> |'if' '(' <value> ')' <block>  'else' <if-stmt-BNF>
 
 
 // OTHER

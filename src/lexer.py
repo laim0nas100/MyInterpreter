@@ -9,7 +9,9 @@
 # EOF (end-of-file) token is used to indicate that
 # there is no more input left for lexical analysis
 import re
-from lib import ArrayList, stringReplace
+
+from src.lib import ArrayList, stringReplace
+
 
 class Token(object):
     tokens = dict()
@@ -18,7 +20,6 @@ class Token(object):
     other = dict()
     @staticmethod
     def getSortedKeys(diction:dict):
-        valueArray = list()
         keyArray = list()
         result = list()
         for info in diction.items():
@@ -98,8 +99,8 @@ class Lexer(object):
         self.pos = Pos(0,0)
         self.tokenList = list()
 
-    def error(self):
-        Token("LEXER_ERROR",'Invalid character'+self.currentChar())
+    def error(self,error):
+        Token("LEXER_ERROR", error + "At line:"+str(self.pos.linePos)+" index:"+self.pos.indexPos+" char:"+self.currentChar())
 
     def currentChar(self):
         try:
@@ -141,11 +142,11 @@ class Lexer(object):
         else:
             return None
 
-    def skip_whitespace(self):
+    def skipWhitespace(self):
         while self.currentChar() is not None and self.currentChar().isspace():
             self.advance()
 
-    def skip_comment(self):
+    def skipComment(self):
         tk = Token.get("COMMENTEND")
         while not self.tryToMatch(tk):
             self.advance()
@@ -153,7 +154,7 @@ class Lexer(object):
 
     def skipLine(self):
         self.pos.indexPos = 0
-        self.pos.linePos +=1
+        self.pos.linePos += 1
 
     def number(self):
         """Return a (multidigit) integer or float consumed from the input."""
@@ -217,10 +218,10 @@ class Lexer(object):
         apart into tokens. One token at a time.
         """
         while self.currentChar() is not None:
-            print("Current:"+self.currentChar())
+            # print("Current:"+self.currentChar())
 
             if self.currentChar().isspace():
-                self.skip_whitespace()
+                self.skipWhitespace()
                 continue
 
             if self.currentChar().isalpha():
@@ -234,7 +235,7 @@ class Lexer(object):
                 continue
             if self.tryToMatch(Token.get("COMMENTSTART")):
                 self.advance(len(Token.get("COMMENTSTART")))
-                self.skip_comment()
+                self.skipComment()
                 continue
             if self.tryToMatch(Token.get("STRINGL")):
                 return self.string()
@@ -244,12 +245,10 @@ class Lexer(object):
                     self.advance(len(tokenValue))
                     return Token(key,tokenValue)
 
-            self.error()
+            self.error("invalid character")
 
         return Token("EOF", None)
 
-    def variable(self):
-        pass
 
     def tryToMatch(self, explicit:str):
         lengthToPeek = len(explicit)
@@ -260,17 +259,17 @@ class Lexer(object):
             if ch is not None:
                 readSymbols+=ch
 
-        # print(readSymbols)
         return readSymbols == explicit
 
     def lexerize(self,output=None):
 
-        token = token = self.getNextToken()
-        while token.type != "EOF":
-            self.tokenList.append(token)
+
+        while True:
             token = self.getNextToken()
+            self.tokenList.append(token)
             if token.type == "LEXER_ERROR":
-                self.tokenList.append(token)
+                break
+            if token.type == "EOF":
                 break
         if output is not None:
             file = open(output,"w")

@@ -11,33 +11,21 @@ class Interpreter(object):
         # current token instance
         self.current_token = None
 
-    def error(self):
-        raise Exception('Error parsing input')
-
-    def get_next_token(self):
-        """Lexical analyzer (also known as scanner or tokenizer)
-
-        This method is responsible for breaking a sentence
-        apart into tokens. One token at a time.
-        """
-        text = self.text
-
-
-        self.error()
 
     def eat(self, token_type):
         # compare the current token type with the passed token
         # type and if they match then "eat" the current token
         # and assign the next token to the self.current_token,
         # otherwise raise an exception.
-        if self.current_token.type == token_type:
-            self.current_token = self.get_next_token()
-        else:
-            self.error()
+        # if self.current_token.type == token_type:
+        #     self.current_token = self.get_next_token()
+        # else:
+        #     self.error()
+        return None
 
     def expr(self):
         # set current token to the first token taken from the input
-        self.current_token = self.get_next_token()
+        # self.current_token = self.get_next_token()
 
         raise Exception("NOT YET")
 
@@ -45,8 +33,6 @@ class Interpreter(object):
 def main():
     while True:
         try:
-            # To run under Python3 replace 'raw_input' call
-            # with 'input'
             text = input('calc> ')
         except EOFError:
             break
