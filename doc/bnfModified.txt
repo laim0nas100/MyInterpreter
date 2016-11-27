@@ -42,7 +42,7 @@ Laimonas Beniušis
 <exp2>                          ::= <exp3> [ <comparison-operator> <exp2> ]
 <exp3>                          ::= <term> [ <add-or-subtract-operator> <exp3> ]
 <term>                          ::= <factor> [ <mult-or-div-operator> <term> ]
-<factor>                        ::= '(' <exp1> ')' | <name> ['['<exp1>']'] | <type-literal> | <function-call> | '!' <exp1>
+<factor>                        ::= { <add-or-subtract-operator> } | '(' <exp1> ')' | <name> ['['<exp1>']'] | <type-literal> | <function-call> | '!' <exp1>
 
 // DECLARATION
 <declaration>                   ::= <constant-declaration> | <variable-declaration> | <array-declaration> | <function-declaration>
@@ -62,9 +62,8 @@ Laimonas Beniušis
 
 <block-body>                    ::= '{' <block> '}'
 <block>                         ::= { <statement> }
-<statement>                     ::= <inline-stmt> ';' | <exit-stmt> ';' | <flow-stmt>
-<inline-stmt>                   ::= <simple-stmt> | <exp1>
-<simple-stmt>                   ::= <declaration>  | <name> <value-assignment> | <io-stmt> 
+<statement>                     ::= <simple-stmt> ';' | <exit-stmt> ';' | <flow-stmt>
+<simple-stmt>                   ::= <declaration>  | <name> <value-assignment> | <io-stmt> |<exp1>
 
 <function-call>                 ::= <name> '(' [ <call-param-list> ] ')'
 <call-param-list>               ::= <value> { ',' <value> }

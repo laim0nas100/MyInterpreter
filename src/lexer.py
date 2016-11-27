@@ -10,10 +10,19 @@
 # there is no more input left for lexical analysis
 import re
 
+from src.LexNames import LexName
 from src.lib import ArrayList, stringReplace
 
 
+class Pos:
+    def __init__(self,line,index):
+        self.linePos = line
+        self.indexPos = index
+
+    def __str__(self):
+        return str(self.linePos)+":"+str(self.indexPos)
 class Token(object):
+    globalPos = Pos(0,0)
     tokens = dict()
     keys = list()
     keywords = dict()
@@ -61,9 +70,10 @@ class Token(object):
 
 
 
-    def __init__(self, type, value):
+    def __init__(self, type, value,pos:Pos=None):
         self.type = type
         self.value = value
+        self.position = Pos(Token.globalPos.linePos,Token.globalPos.indexPos)
 
 
     def __str__(self):
@@ -73,22 +83,17 @@ class Token(object):
             Token(PLUS, '+')
             Token(MUL, '*')
         """
-        return 'Token({type}, {value})'.format(
+        return 'Token({type}, {value}, {position})'.format(
             type=self.type,
-            value=repr(self.value)
+            value=repr(self.value),
+            position=self.position.__str__()
         )
 
     def __repr__(self):
         return self.__str__()
 
 
-class Pos:
-    def __init__(self,line,index):
-        self.linePos = line
-        self.indexPos = index
 
-    def __str__(self):
-        return str(self.linePos)+":"+str(self.indexPos)
 
 
 class Lexer(object):
@@ -120,6 +125,7 @@ class Lexer(object):
     def advance(self,amount=1):
         """Advance the `pos` pointer and set the `currentChar()` variable."""
         self.pos = self.rangeCheck(amount)
+        Token.globalPos = self.pos
 
 
     def rangeCheck(self,shift:int)->Pos:
@@ -147,7 +153,7 @@ class Lexer(object):
             self.advance()
 
     def skipComment(self):
-        tk = Token.get("COMMENTEND")
+        tk = Token.get(LexName.COMMENTEND)
         while not self.tryToMatch(tk):
             self.advance()
         self.advance(len(tk))
@@ -163,7 +169,7 @@ class Lexer(object):
             result += self.currentChar()
             self.advance()
 
-        if self.tryToMatch(Token.get("FLOATSIGN")):
+        if self.tryToMatch(Token.get(LexName.FLOATSIGN)):
             result += "."
             self.advance()
 
@@ -174,9 +180,9 @@ class Lexer(object):
                 result += self.currentChar()
                 self.advance()
 
-            token = Token("FLOAT_CONST", float(result))
+            token = Token(LexName.FLOAT_CONST, float(result))
         else:
-            token = Token("INTEGER_CONST", int(result))
+            token = Token(LexName.INTEGER_CONST, int(result))
 
         return token
 
@@ -184,17 +190,18 @@ class Lexer(object):
         result = ""
         self.advance()
         while self.currentChar() is not None:
-            if self.tryToMatch(Token.get("ESC")):
-                self.advance(len(Token.get("ESC")))
+            if self.tryToMatch(Token.get(LexName.ESC)):
+                self.advance(len(Token.get(LexName.ESC)))
                 print("found"+self.currentChar())
 
-            result += self.currentChar()
-            self.advance()
-            if self.tryToMatch(Token.get("STRINGR")):
+
+            if self.tryToMatch(Token.get(LexName.STRINGR)):
 
                 self.advance()
-                return Token("STRING_CONST", str(result))
-        return Token("LEXER_ERROR","String not terminated")
+                return Token(LexName.STRING_CONST, str(result))
+            result += self.currentChar()
+            self.advance()
+        return Token(LexName.LEXER_ERROR,"String not terminated")
 
     def id(self):
         """Handle identifiers and reserved keywords"""
@@ -210,7 +217,7 @@ class Lexer(object):
                 print(token)
                 return token
 
-        return Token("VARIABLE",result)
+        return Token(LexName.VALUECALL,result)
 
     def getNextToken(self):
         """Lexical analyzer (also known as scanner or tokenizer)
@@ -230,14 +237,14 @@ class Lexer(object):
             if self.currentChar().isdigit():
                 return self.number()
 
-            if self.tryToMatch(Token.get("LINECOMMENT")):
+            if self.tryToMatch(Token.get(LexName.LINECOMMENT)):
                 self.skipLine()
                 continue
-            if self.tryToMatch(Token.get("COMMENTSTART")):
-                self.advance(len(Token.get("COMMENTSTART")))
+            if self.tryToMatch(Token.get(LexName.COMMENTSTART)):
+                self.advance(len(Token.get(LexName.COMMENTSTART)))
                 self.skipComment()
                 continue
-            if self.tryToMatch(Token.get("STRINGL")):
+            if self.tryToMatch(Token.get(LexName.STRINGL)):
                 return self.string()
             for key in Token.getSortedKeys(Token.other):
                 tokenValue = Token.get(key)
@@ -247,7 +254,7 @@ class Lexer(object):
 
             self.error("invalid character")
 
-        return Token("EOF", None)
+        return Token(LexName.EOF, None)
 
 
     def tryToMatch(self, explicit:str):
@@ -267,9 +274,10 @@ class Lexer(object):
         while True:
             token = self.getNextToken()
             self.tokenList.append(token)
-            if token.type == "LEXER_ERROR":
+            if token.type == LexName.LEXER_ERROR:
                 break
-            if token.type == "EOF":
+            if token.type == LexName.EOF:
+                Token.globalPos=Pos(-1,-1)
                 break
         if output is not None:
             file = open(output,"w")

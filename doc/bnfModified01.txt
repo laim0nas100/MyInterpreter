@@ -62,7 +62,7 @@ Laimonas Beniušis
 
 <block>                         ::= '{' <block-body> '}'
 <block-body>                    ::= { <statement> }
-<statement>                     ::= <inline-stmt> ';' | <exit-stmt> ';' | <flow-stmt> ';'
+<statement>                     ::= <inline-stmt> ';' | <exit-stmt> ';' | <flow-stmt> ';' | <block> ;
 <inline-stmt>                   ::= <simple-stmt> | <exp1>
 <simple-stmt>                   ::= <declaration>  | <name> <value-assignment> | <io-stmt> 
 

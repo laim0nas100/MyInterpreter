@@ -1,434 +1,354 @@
+from src.ASTnodes import *
+from src.LexNames import LexName
 from src.lexer import Token
+
+class ParserException(Exception):
+    def __init__(self,*args):
+        super().__init__(args)
+
 
 
 class Parser:
-    types = ["STRING", "BOOLEAN", "INT", "FLOAT"]
+    __fixingRange = 1
+    __maxSemiInsertionCount = 3
 
     def __init__(self,tokenList:list):
         self.tokenList = tokenList
-        self.currToken = tokenList[0]
         self.tokenNo = 0
+        self.lastInsertedToken = None
+        self.timesInsertedSemi = 0
+        self.needReparse = False
+        self.errorToken = None
+
+    def delCurrentToken(self):
+        del self.tokenList[self.tokenNo]
 
     def getNextToken(self):
         self.tokenNo+=1
         return self.tokenList[self.tokenNo]
 
     def getCurrTokenType(self):
-        return self.currToken.type
+        return self.tokenList[self.tokenNo].type
 
-    def error(self):
-        raise Exception("Error")
+    def getCurrToken(self):
+        return self.tokenList[self.tokenNo]
 
-    def eat(self,tokenType=None):
+    def error(self,expected = ""):
+        got = self.getCurrToken()
+        raise ParserException("Expected = "+str(expected) + " got = "+ str(got))
+
+    def tryToFix(self,expectedToken,tryNo:int=0):
+
+        #try to delete unopened blocks
+        if not self.countBlocks():
+            if self.getCurrTokenType() in LexName.RightClose:
+                self.delCurrentToken()
+                return "DELETE"
+
+        #fix is only available, if we have expectedToken
+        if tryNo == 0:
+            self.errorToken = self.getCurrToken()
+            #try to insert it
+            if expectedToken == LexName.SEMI:
+                self.timesInsertedSemi+=1
+            if self.timesInsertedSemi > self.__maxSemiInsertionCount:
+                raise ParserException("Possible infinite loop, terminating",self.errorToken)
+            self.tokenList.insert(self.tokenNo,Token(expectedToken,None))
+            self.lastInsertedToken = expectedToken
+            return "INSERT"
+        elif tryNo == 1:
+            #try to replace it
+            self.tokenList.pop(self.tokenNo)
+            self.tokenList[self.tokenNo] = Token(expectedToken,None)
+            return "REPLACE"
+        elif tryNo >=2:
+            return "FAIL"
+
+
+    def eat(self,tokenType=None,attempt:int=0):
+        if tokenType != LexName.SEMI:
+            self.timesInsertedSemi = 0
         if tokenType is None:
-            tokenType = self.currToken.type
-
-        if self.currToken.type == tokenType:
-            self.currToken = self.getNextToken()
+            self.getNextToken()
+            return True
+        if self.getCurrTokenType() == tokenType:
+            self.getNextToken()
+            return True
         else:
-            self.error()
+            res = self.tryToFix(tokenType,attempt)
+            if res == "DELETE":
+                return "DELETE"
+            elif res == "INSERT":
+                eaten = self.eat(tokenType,attempt+1)
+            else:
+                return "FAIL"
+            if eaten=="FAIL" and attempt ==0:
+                self.error(tokenType)
 
     def root(self):
+        self.tokenNo = 0
         root = Root()
-        while self.getCurrTokenType()!= "EOF":
+        while self.getCurrTokenType()!= LexName.EOF:
             root.statements.append(self.statement())
         return root
 
     def block(self):
-        self.eat("BLOCKL")
+        self.eat(LexName.BLOCKL)
         node = self.blockBody()
-        self.eat("BLOCKR")
+        self.eat(LexName.BLOCKR)
         return node
 
     def blockBody(self):
-        statemets = list()
-        while self.getCurrTokenType() != "BLOCKR":
-            statemets.append(self.statement())
+        statements = []
+        while self.getCurrTokenType() != LexName.BLOCKR:
+            statements.append(self.statement())
         block = Block()
-        block.statements = statemets
+        block.statements = statements
         return block
 
     def statement(self):
+        statement = Statement()
+
         node = None
-        if self.getCurrTokenType() == "BLOCKL":
+        if self.getCurrTokenType() == LexName.BLOCKL:
             node = self.block()
-        elif self.getCurrTokenType() == "VARIABLE":
-            node = self.variable()
-        elif self.getCurrTokenType() == "DEF":
+        elif self.getCurrTokenType() == LexName.VALUECALL:
+            node = self.valueCall()
+        elif self.getCurrTokenType() == LexName.DEF:
             node = self.functionDefinition()
-        elif self.getCurrTokenType() in Parser.types:
+        elif self.getCurrTokenType() in LexName.Types:
             node = self.variableDeclaration()
+        elif self.getCurrTokenType() in LexName.ExitStatements:
+            node = self.exitStatement()
+        elif self.getCurrTokenType() in LexName.FlowStatements:
+            node = self.flowStatement()
         else:
-
             node = self.exp1()
-        self.eat("SEMI")
-        return node
-
-
+        if self.eat(LexName.SEMI) == "DELETE":
+            self.needReparse = True
+        statement.node=node
+        return statement
 
     def exp1(self):
-        node = self.exp3()
-        while self.currToken.type in ["AND", "OR"]:
-            token = self.currToken
-            if token.type == "AND":
+        node = self.exp2()
+        while self.getCurrTokenType() in LexName.LogicOperators:
+            token = self.getCurrToken()
+            if token.type == LexName.AND:
                 self.eat()
-            elif token.type == "OR":
+            elif token.type == LexName.OR:
                 self.eat()
 
-            node = BinaryOperator(node, token, self.factor())
+            node = BinaryOperator(node, token, self.exp2())
 
         return node
 
     def exp2(self):
-        node = self.exp2()
-        array = ["EQUALS", "GREATER", "LESSEQUAL", "LESS", "GREATEREQUAL", "NOTEQUAL"]
-        while self.currToken.type in array:
-            token = self.currToken
+        node = self.exp3()
+
+        while self.getCurrTokenType() in LexName.CompareOperators:
+            token = self.getCurrToken()
             self.eat()
-            node = BinaryOperator(node, token, self.factor())
+            node = BinaryOperator(node, token, self.exp3())
 
         return node
 
     def exp3(self):
         node = self.term()
-        while self.currToken.type in ["PLUS","MINUS"]:
-            token = self.currToken
+        while self.getCurrTokenType() in [LexName.PLUS,LexName.MINUS]:
+            token = self.getCurrToken()
             self.eat()
-            node = BinaryOperator(node, token, self.factor())
+            node = BinaryOperator(node, token, self.term())
 
         return node
 
     def term(self):
         node = self.factor()
 
-        while self.currToken.type in ["MULTIPLY","DIVIDE"]:
-            token = self.currToken
+        while self.getCurrTokenType() in [LexName.MULTIPLY,LexName.DIVIDE]:
+            token = self.getCurrToken()
             self.eat()
             node = BinaryOperator(node, token, self.factor())
 
         return node
 
     def factor(self):
-        token = self.currToken
+        token = self.getCurrToken()
         node = None
-        if token.type == "INTEGER_CONST":
+        if token.type == LexName.INTEGER_CONST:
             self.eat()
             node = Integer(token)
-        elif token.type == "FLOAT_CONST":
+        elif token.type == LexName.FLOAT_CONST:
             self.eat()
             node = Float(token)
-        elif token.type == "NULL":
+        elif token.type == LexName.NULL:
             self.eat()
             node = Null(token)
-        elif token.type == "STRING_CONST":
+        elif token.type == LexName.STRING_CONST:
             self.eat()
             node = String(token)
-        elif token.type in ["TRUE","FALSE"]:
+        elif token.type in [LexName.TRUE,LexName.FALSE]:
             self.eat()
             node = Boolean(token)
-        elif token.type == "VARIABLE":
-            node = self.variable()
-        elif token.type == "PARENTHISISL":
+        elif token.type in [LexName.VALUECALL,LexName.PRINT]:
+            node = self.valueCall()
+        elif token.type == LexName.PARENTHISISL:
             self.eat()
             node = self.exp1()
-            self.eat("PARENTHISISR")
-        elif token.type == "NOT":
+            self.eat(LexName.PARENTHISISR)
+        elif token.type == LexName.NOT:
             self.eat()
             node = self.exp1()
-        #    add negation property
+            node.negation = True
         return node
 
-
-    def variable(self):
-        name = self.currToken.value
+    def valueCall(self):
+        node = None
+        name = self.getCurrToken().value
         self.eat()
-        if self.getCurrTokenType() == "PARENTHISISL":
+        if name == LexName.PRINT:
+            node = PrintStatement
+        if self.getCurrTokenType() == LexName.PARENTHISISL:
+            #funcionCall
             self.eat()
-            token = self.functionCall(name)
-            self.eat("PARENTHISISR")
-        elif self.getCurrTokenType() == "BRACKETL":
+            node = self.functionCall(name)
+            self.eat(LexName.PARENTHISISR)
+        elif self.getCurrTokenType() == LexName.BRACKETL:
+            # arrayCall
             self.eat()
-            token = self.exp1()
-            self.eat("BRACKETR")
+            index = self.exp1()
+            self.eat(LexName.BRACKETR)
+            node = ArrayCall(name,index)
         else:
-            pass
+            # variableCall
+            node = ValueCall(name)
+        return node
 
     def functionDefinition(self):
-        self.eat("DEF")
+        self.eat(LexName.DEF)
 
-        token = self.currToken
+        token = self.getCurrToken()
         name = None
         parameters = list()
         tp = None
         body = None
 
-        if self.getCurrTokenType() in Parser.types:
+        if self.getCurrTokenType() in LexName.Types:
             tp = Type(self.getCurrTokenType())
             self.eat()
-            if self.getCurrTokenType() == "VARIABLE":
+            if self.getCurrTokenType() == LexName.VALUECALL:
 
-                name = self.currToken.value
+                name = self.getCurrToken().value
 
                 self.eat()
-                self.eat("PARENTHISISL")
+                self.eat(LexName.PARENTHISISL)
 
-                while self.getCurrTokenType() != "PARENTHISISR":
+                while self.getCurrTokenType() != LexName.PARENTHISISR:
                     parameters.append(self.functionParameter())
-                    if self.getCurrTokenType() == "PARENTHISISR":
+                    if self.getCurrTokenType() == LexName.PARENTHISISR:
                         break
-                    self.eat("COMMA")
+                    self.eat(LexName.COMMA)
                 self.eat()
                 body = self.block()
                 return FunctionDeclaration(tp,name,parameters,body)
             else:
                 self.error()
 
-
-
     def functionCall(self,name):
         parameters = list()
-        parameters.append(self.exp1())
-        while self.currToken.type != "PARENTHISISR":
-            self.eat("COMMA")
+        if self.getCurrTokenType() != LexName.PARENTHISISR:
             parameters.append(self.exp1())
+            while self.getCurrTokenType() != LexName.PARENTHISISR:
+                self.eat(LexName.COMMA)
+                parameters.append(self.exp1())
         return FunctionCall(name,parameters)
-
 
     def functionParameter(self):
 
-        if self.getCurrTokenType() in Parser.types:
+        if self.getCurrTokenType() in LexName.Types:
             tp = self.getCurrTokenType()
             isArray = False
             self.eat()
-            if self.getCurrTokenType() == "BRACKETL":
+            if self.getCurrTokenType() == LexName.BRACKETL:
                 self.eat()
-                self.eat("BRACKETR")
+                self.eat(LexName.BRACKETR)
                 isArray = True
-            name = self.currToken.value
-            self.eat("VARIABLE")
+            name = self.getCurrToken().value
+            self.eat(LexName.VALUECALL)
             return FnParameter(tp,name,isArray)
 
-    def arrayCall(self):
-        name = self.currToken.value
-        self.eat("VARIABLE")
-        self.eat("BRACKETL")
-        index = self.exp1()
-        self.eat("BRACKETR")
-        return ArrayCall(name,index)
-
     def variableDeclaration(self):
-        tp = self.currToken.type
+        tp = self.getCurrToken().type
         self.eat()
         size = None
-        if self.getCurrTokenType() == "BRACKETL":
+        if self.getCurrTokenType() == LexName.BRACKETL:
             self.eat()
             size = self.exp1()
-            self.eat("BRACKETR")
-        name = self.currToken.value
-        self.eat("VARIABLE")
+            self.eat(LexName.BRACKETR)
+        name = self.getCurrToken().value
+        self.eat(LexName.VALUECALL)
         if size is not None:
             return ArrayDeclaration(tp,name,size)
 
         value = None
-        if self.getCurrTokenType() == "ASSIGN":
+        if (self.getCurrTokenType() in LexName.CompareOperators) or (self.getCurrTokenType() in LexName.AdvancedAssign):
+            self.delCurrentToken()
+            self.tokenList.insert(self.tokenNo,Token(LexName.ASSIGN,None))
+        if self.getCurrTokenType() == LexName.ASSIGN:
             self.eat()
             value = self.exp1()
         return VariableInitialization(tp,name,value)
 
+    def exitStatement(self):
+        node = None
+        tokenType = self.getCurrTokenType()
+        self.eat()
+        if tokenType == LexName.CONTINUE:
+            node = ContinueStatement()
+        elif tokenType == LexName.BREAK:
+            node = BreakStatement()
+        else:
+            node = ReturnStatement(self.exp1())
+        return node
 
-class AST:
-    def __str__(self):
-        return ""
+    def flowStatement(self):
+        node = None
+        tokenType = self.getCurrTokenType()
+        self.eat()
+        self.eat(LexName.PARENTHISISL)
+        if tokenType == LexName.WHILE:
+            exp = self.exp1()
+            self.eat(LexName.PARENTHISISR)
+            block = self.statement()
+            node = WhileLoop(exp,block)
+        elif tokenType == LexName.FOR:
 
-class Block(AST):
-    def __init__(self):
-        self.statements = list()
+            var = self.statement()
+            condition = self.statement()
+            increment = self.statement()
+            self.eat(LexName.PARENTHISISR)
 
-    def __str__(self):
-        s = "{\n"
-        for st in self.statements:
-            s+=st.__str__()+";\n"
-        return s+"}"
+            block = self.statement()
+            node = ForLoop(condition,block,var,increment)
+        else:
+            node = IfStatement(self.exp1())
+            self.eat(LexName.PARENTHISISR)
 
-class Root(Block):
-    def __init__(self):
-        super().__init__()
+            node.blocks.append(self.statement())
+            if self.getCurrTokenType() == LexName.ELSE:
+                self.eat()
+                node.blocks.append(self.statement())
+        return node
 
-
-
-class Statement(AST):
-    def __init__(self):
-        self.nodes = list()
-
-    def __str__(self):
-        for n in self.nodes:
-            print(n)
-
-
-class InlineStatement(Statement):
-    pass
-
-class SimpleStatement(Statement):
-    pass
-
-
-
-class Type(AST):
-    def __init__(self,tp,isArray=False):
-        self.type = tp
-        self.isArray = isArray
-
-    def __str__(self):
-        s = str(self.type)
-        if self.isArray:
-            s+="[]"
-        return s
-
-
-class VariableDeclaration(Type):
-    def __init__(self, tp, name):
-        super().__init__(tp)
-        self.name = name
-
-    def __str__(self):
-        s = str(self.type)
-        if self.isArray:
-            s += "[]"
-        return s + " "+str(self.name)
+    def countBlocks(self):
+        lefties = [LexName.PARENTHISISL,LexName.BRACKETL,LexName.BLOCKL]
+        righties = [LexName.PARENTHISISR,LexName.BRACKETR,LexName.BLOCKR]
+        countL = 0
+        countR = 0
+        for token in self.tokenList:
+            if token.type in lefties:
+                countL+=1
+            elif token.type in righties:
+                countR+=1
+        return countL==countR
 
 
-class VariableInitialization(VariableDeclaration):
-    def __init__(self, tp, name, value=None):
-        super().__init__(tp,name)
-        self.value = value
-
-    def __str__(self):
-        s = str(self.type)
-        if self.isArray:
-            s += "[]"
-        return s + " "+str(self.name)+" = "+str(self.value)
-
-class ConstantDeclaration(VariableDeclaration):
-    pass
-
-class ArrayDeclaration(VariableDeclaration):
-    def __init__(self, tp, name, size):
-        super().__init__(tp, name)
-        self.value = [None] *size
-        self.size = size
-
-
-class FunctionDeclaration(VariableDeclaration):
-    def __init__(self, tp, name, parameters:list,body):
-        super().__init__(tp, name)
-        self.parameters = parameters
-        self.body = body
-    def __str__(self):
-        s = super().__str__()
-        s+="("
-        for p in self.parameters:
-            s+= p.__str__() +","
-
-        s = s[:-1] + ")"
-        s+= self.body.__str__()
-        return s
-
-
-
-
-class FnParameter(VariableDeclaration):
-    def __init__(self, tp, name, isArray=False):
-        super().__init__(tp,name)
-        self.name = name
-        self.isArray = isArray
-class Name(AST):
-    def __init__(self,name):
-        self.name = name
-class Variable(Name):
-    def __init__(self, name):
-        super().__init__(name)
-
-class ArrayCall(Variable):
-    def __init__(self, name, index):
-        super().__init__(name)
-        self.index = index
-
-class IOStatement(Statement):
-    pass
-
-class PrintStatement(IOStatement):
-    pass
-
-class InputStatement(IOStatement):
-    pass
-
-class ExitStatement(SimpleStatement):
-    pass
-
-class ReturnStatement(ExitStatement):
-    pass
-
-class BreakStatement(ExitStatement):
-    pass
-
-class ContinueStatement(ExitStatement):
-    pass
-
-class FlowStatement(SimpleStatement):
-    pass
-
-class WhileLoop(FlowStatement):
-    pass
-
-class ForLoop(WhileLoop):
-    pass
-
-class IfStatement(FlowStatement):
-    pass
-
-class Literall(AST):
-
-    def __init__(self,token:Token):
-        self.token = token
-
-    def getValue(self):
-        return self.token.value
-
-    def __str__(self):
-        return str(self.token.value)
-
-class Integer(Literall):
-    def __init__(self, token:Token):
-        super().__init__(token)
-
-
-class Float(Integer):
-    def __init__(self, token:Token):
-        super().__init__(token)
-
-
-class String(Literall):
-    def __init__(self, token:Token):
-        super().__init__(token)
-
-class Boolean(Literall):
-    def __init__(self, token:Token):
-        super().__init__(token)
-
-class Null(Literall):
-    def __init__(self, token:Token):
-        super().__init__(token)
-
-class BinaryOperator(AST):
-    def __init__(self,left:Token,op:Token,right:Token):
-        self.left = left
-        self.op = op
-        self.right = right
-
-    def __str__(self):
-        return  str(self.left) +"BO"+ str(self.op.value) + str(self.right)
-
-class FunctionCall(AST):
-    def __init__(self,name,parameters:list):
-        self.name = name
-        self.paramaters = parameters.copy()

@@ -1,6 +1,28 @@
-/*{
-    int a = 10 + 15;
-};*/
-def int f(int a){
-   int b = (12+3)*3;
+/*
+string s = "ok\" ok";
+{
+    //int a = 10+(15*2) + b(1,12+3);
+    //string s = null;
+    int[10+10] array;
+    //return 10;
 };
+
+def int f(int[] a,float[] c){
+   int b = 3*12+3;
+   return 10;
+};
+
+for (int i =1; i < 10; i+=1;){
+
+    };
+*/
+
+while True {
+    print("p")
+    string f *= 1.1
+}
+
+
+
+
+//((3BO*12)BO+3); (3BO*(12BO+3));

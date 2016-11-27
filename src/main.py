@@ -24,8 +24,18 @@ if __name__ == '__main__':
     print(lexer.tokenList)
     parser = Parser(lexer.tokenList)
 
-    print(parser.root())
-
-
+    print("Blocks left and right matching: "+str(parser.countBlocks()))
+    root = parser.root()
+    while parser.needReparse:
+        print("Reparsing")
+        parser.needReparse = False
+        root = parser.root()
+        print("Updated token list")
+        print(parser.tokenList)
+    print("Updated token list")
+    print(parser.tokenList)
+    # print(root.xml())
+    w = open("AST.xml","w")
+    w.write(root.xml())
     # print(Token.getSortedKeys(Token.other))
     print("END")
