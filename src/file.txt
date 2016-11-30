@@ -1,11 +1,11 @@
 def int f(int[] a,float[] c){
    int b = 3*12+3+1;
    return 10;
-};
+}
 
 {
 
-};
+}
 a = a;
 
 
@@ -17,19 +17,20 @@ string s1 ="";
     string s = null;
     int[10+10] array;
     return 10;
-};
+}
 
 def int f(int[] a,float[] c){
    int b = 3*12+3;
    return 10;
-};
+}
 
 while (True) {
     print("p");
-    string s = input("feed me");
-    string __ = 1.1;
-};
+    string s = print("feed me");
+    string s = 1.1;
+}
 
+if (True) print("OK"); else if(False) input("NOPE");
 
 /*
 Bottom-up parsing was driven by tables which made the algorithm fast for correct inputs, but unable to accurately diagnose faulty ones.

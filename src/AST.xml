@@ -58,8 +58,6 @@ Operator+<Int_Const>
 </Block>
 </Statement>
 <Statement>
-AST</Statement>
-<Statement>
 <VariableAssign>
 <ValueCall>
 a</ValueCall>
@@ -166,8 +164,6 @@ Operator+<Int_Const>
 </Block>
 </Statement>
 <Statement>
-AST</Statement>
-<Statement>
 <FunctionDeclaration>
 <VariableDeclaration>
 <Type>
@@ -224,7 +220,7 @@ True</ValueCall>
 do<Statement>
 <Block>
 <Statement>
-<FunctionCall>
+<PrintStatement>
 <ValueCall>
 print</ValueCall>
 <Arguments>
@@ -233,7 +229,7 @@ print</ValueCall>
 p</String_const>
 </Arg>
 </Arguments>
-</FunctionCall>
+</PrintStatement>
 </Statement>
 <Statement>
 <VariableInitialization>
@@ -242,16 +238,16 @@ p</String_const>
 STRING
 </Type>
 name =s</VariableDeclaration>
-value=<FunctionCall>
+value=<PrintStatement>
 <ValueCall>
-input</ValueCall>
+print</ValueCall>
 <Arguments>
 <Arg>
 <String_const>
 feed me</String_const>
 </Arg>
 </Arguments>
-</FunctionCall>
+</PrintStatement>
 </VariableInitialization>
 </Statement>
 <Statement>
@@ -260,7 +256,7 @@ feed me</String_const>
 <Type>
 STRING
 </Type>
-name =p1</VariableDeclaration>
+name =s</VariableDeclaration>
 value=<Float_Const>
 1.1</Float_Const>
 </VariableInitialization>
@@ -268,5 +264,41 @@ value=<Float_Const>
 </Block>
 </Statement>
 </WhileLoop>
+</Statement>
+<Statement>
+<IfStatement>
+if<ValueCall>
+True</ValueCall>
+do<Statement>
+<PrintStatement>
+<ValueCall>
+print</ValueCall>
+<Arguments>
+<Arg>
+<String_const>
+OK</String_const>
+</Arg>
+</Arguments>
+</PrintStatement>
+</Statement>
+else do<Statement>
+<IfStatement>
+if<ValueCall>
+False</ValueCall>
+do<Statement>
+<InputStatement>
+<ValueCall>
+input</ValueCall>
+<Arguments>
+<Arg>
+<String_const>
+NOPE</String_const>
+</Arg>
+</Arguments>
+</InputStatement>
+</Statement>
+</IfStatement>
+</Statement>
+</IfStatement>
 </Statement>
 </Root>

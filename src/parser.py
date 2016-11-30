@@ -148,17 +148,21 @@ class Parser:
         if self.getCurrTokenType() == LexName.BLOCKL:
             node = self.block()
             statement.node = node
-            return statement
-        elif self.getCurrTokenType() == LexName.VALUECALL:
+            return statement #no semicolon afterwards
+        elif self.getCurrTokenType() in [LexName.VALUECALL,LexName.PRINT,LexName.INPUT]:
             node = self.valueCall()
         elif self.getCurrTokenType() == LexName.DEF:
             node = self.functionDefinition()
+            statement.node = node
+            return statement  # no semicolon afterwards
         elif self.getCurrTokenType() in LexName.Types:
             node = self.variableDeclaration()
         elif self.getCurrTokenType() in LexName.ExitStatements:
             node = self.exitStatement()
         elif self.getCurrTokenType() in LexName.FlowStatements:
             node = self.flowStatement()
+            statement.node = node
+            return statement #no semicolon afterwards
         else:
             node = self.exp1()
         statement.node = node
@@ -245,20 +249,17 @@ class Parser:
     def valueCall(self):
         node = None
         name = self.getCurrToken().value
+        saveTokenType = self.getCurrTokenType()
         self.eat()
-        if self.getCurrTokenType() == LexName.PRINT:
-            node = self.functionCall(name)
-            self.eat(LexName.PARENTHISISR)
-            node = PrintStatement(node.name,node.parameters)
-        elif self.getCurrTokenType() == LexName.INPUT:
-            node = self.functionCall(name)
-            self.eat(LexName.PARENTHISISR)
-            node = InputStatement(node.name, node.parameters)
-        elif self.getCurrTokenType() == LexName.PARENTHISISL:
+        if self.getCurrTokenType() == LexName.PARENTHISISL:
             #funcionCall
             self.eat()
             node = self.functionCall(name)
             self.eat(LexName.PARENTHISISR)
+            if saveTokenType == LexName.PRINT:
+                node = PrintStatement(name,node.parameters)
+            elif saveTokenType == LexName.INPUT:
+                node = InputStatement(name, node.parameters)
         elif self.getCurrTokenType() == LexName.BRACKETL:
             # arrayCall
             self.eat()
