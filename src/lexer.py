@@ -20,7 +20,11 @@ class Pos:
         self.indexPos = index
 
     def __str__(self):
-        return str(self.linePos)+":"+str(self.indexPos)
+        lp = None
+        if self.linePos is not None:
+            lp = self.linePos+1
+        return str(lp)+":"+str(self.indexPos)
+
 class Token(object):
     globalPos = Pos(0,0)
     tokens = dict()
@@ -73,16 +77,9 @@ class Token(object):
     def __init__(self, type, value,pos:Pos=None):
         self.type = type
         self.value = value
-        self.position = Pos(Token.globalPos.linePos,Token.globalPos.indexPos)
-
+        self.position = pos
 
     def __str__(self):
-        """String representation of the class instance.
-        Examples:
-            Token(INTEGER, 3)
-            Token(PLUS, '+')
-            Token(MUL, '*')
-        """
         return 'Token({type}, {value}, {position})'.format(
             type=self.type,
             value=repr(self.value),
@@ -105,7 +102,7 @@ class Lexer(object):
         self.tokenList = list()
 
     def error(self,error):
-        Token("LEXER_ERROR", error + "At line:"+str(self.pos.linePos)+" index:"+self.pos.indexPos+" char:"+self.currentChar())
+        return Token(LexName.LEXER_ERROR, error +" char:"+self.currentChar(),self.pos)
 
     def currentChar(self):
         try:
@@ -180,9 +177,9 @@ class Lexer(object):
                 result += self.currentChar()
                 self.advance()
 
-            token = Token(LexName.FLOAT_CONST, float(result))
+            token = Token(LexName.FLOAT_CONST, float(result),self.pos)
         else:
-            token = Token(LexName.INTEGER_CONST, int(result))
+            token = Token(LexName.INTEGER_CONST, int(result),self.pos)
 
         return token
 
@@ -192,16 +189,15 @@ class Lexer(object):
         while self.currentChar() is not None:
             if self.tryToMatch(Token.get(LexName.ESC)):
                 self.advance(len(Token.get(LexName.ESC)))
-                print("found"+self.currentChar())
-
-
+                result += self.currentChar()
+                self.advance()
             if self.tryToMatch(Token.get(LexName.STRINGR)):
 
                 self.advance()
-                return Token(LexName.STRING_CONST, str(result))
+                return Token(LexName.STRING_CONST, str(result),self.pos)
             result += self.currentChar()
             self.advance()
-        return Token(LexName.LEXER_ERROR,"String not terminated")
+        return Token(LexName.LEXER_ERROR,"String not terminated",self.pos)
 
     def id(self):
         """Handle identifiers and reserved keywords"""
@@ -213,11 +209,11 @@ class Lexer(object):
         for key in Token.getSortedKeys(Token.keywords):
             tokenValue = Token.get(key)
             if result == tokenValue:
-                token = Token(key,tokenValue)
-                print(token)
+                token = Token(key,tokenValue,self.pos)
+                # print(token)
                 return token
 
-        return Token(LexName.VALUECALL,result)
+        return Token(LexName.VALUECALL,result,self.pos)
 
     def getNextToken(self):
         """Lexical analyzer (also known as scanner or tokenizer)
@@ -250,11 +246,11 @@ class Lexer(object):
                 tokenValue = Token.get(key)
                 if self.tryToMatch(tokenValue):
                     self.advance(len(tokenValue))
-                    return Token(key,tokenValue)
+                    return Token(key,tokenValue,self.pos)
 
-            self.error("invalid character")
+            return self.error("invalid character")
 
-        return Token(LexName.EOF, None)
+        return Token(LexName.EOF, "EOF",self.pos)
 
 
     def tryToMatch(self, explicit:str):

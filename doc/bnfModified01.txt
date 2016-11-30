@@ -48,7 +48,7 @@ Laimonas Beniušis
                                     <variable-declaration> | <array-declaration> | <function-declaration>
 //<constant-declaration>        ::= 'final ' <type> <name> <assignment-operator> <value> ';'
 <variable-declaration>          ::= <variable-declaration-no-semi> ';'
-<variable-declaration-no-semi>  ::= <variable-declare> | <variable-daclare> <value-assignment>
+<variable-declaration-no-semi>  ::= <variable-declare> | <variable-declare> <value-assignment>
 <variable-declare>              ::= <type>' '<name>
 
 <array-declaration>             ::= <type> '['<integer>'] ' <name>';' | <type> <array-literal>' ' <name> ';'
@@ -62,7 +62,7 @@ Laimonas Beniušis
 
 <block>                         ::= '{' <block-body> '}'
 <block-body>                    ::= { <statement> }
-<statement>                     ::= <inline-stmt> ';' | <exit-stmt> ';' | <flow-stmt> ';' | <block> ;
+<statement>                     ::= <inline-stmt> ';' | <exit-stmt> ';' | <flow-stmt> ';' | <block> ';'
 <inline-stmt>                   ::= <simple-stmt> | <exp1>
 <simple-stmt>                   ::= <declaration>  | <name> <value-assignment> | <io-stmt> 
 

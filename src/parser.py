@@ -1,6 +1,9 @@
+import math
+
 from src.ASTnodes import *
 from src.LexNames import LexName
-from src.lexer import Token
+from src.lexer import Token, Pos
+
 
 class ParserException(Exception):
     def __init__(self,*args):
@@ -20,12 +23,43 @@ class Parser:
         self.needReparse = False
         self.errorToken = None
 
+    def makeNewPosition(self,prevToken):
+        nextToken = None
+        try:
+            nextToken = self.tokenList[self.tokenNo+1]
+        except Exception:
+            pass
+        pos = None
+        if nextToken is not None:
+            pos = Pos(int(math.ceil(prevToken.position.linePos+nextToken.position.linePos)/2),
+                      (prevToken.position.indexPos + nextToken.position.indexPos) // 2)
+        else:
+            pos = Pos(prevToken.position.linePos,prevToken.position.indexPos+1)
+        return pos
+
     def delCurrentToken(self):
         del self.tokenList[self.tokenNo]
 
     def getNextToken(self):
         self.tokenNo+=1
         return self.tokenList[self.tokenNo]
+
+    def getPrevTokenType(self):
+        token = LexName.ESC
+        try:
+            token = self.tokenList[self.tokenNo-1].type
+        except Exception:
+            pass
+        return token
+
+    def getPrevToken(self):
+        token = LexName.ESC
+        try:
+            token = self.tokenList[self.tokenNo - 1]
+        except Exception:
+            pass
+        return token
+
 
     def getCurrTokenType(self):
         return self.tokenList[self.tokenNo].type
@@ -53,13 +87,13 @@ class Parser:
                 self.timesInsertedSemi+=1
             if self.timesInsertedSemi > self.__maxSemiInsertionCount:
                 raise ParserException("Possible infinite loop, terminating",self.errorToken)
-            self.tokenList.insert(self.tokenNo,Token(expectedToken,None))
+            self.tokenList.insert(self.tokenNo,Token(expectedToken,None,self.makeNewPosition(self.getPrevToken())))
             self.lastInsertedToken = expectedToken
             return "INSERT"
         elif tryNo == 1:
             #try to replace it
             self.tokenList.pop(self.tokenNo)
-            self.tokenList[self.tokenNo] = Token(expectedToken,None)
+            self.tokenList[self.tokenNo] = Token(expectedToken,None,self.makeNewPosition(self.getPrevToken()))
             return "REPLACE"
         elif tryNo >=2:
             return "FAIL"
@@ -82,7 +116,7 @@ class Parser:
                 eaten = self.eat(tokenType,attempt+1)
             else:
                 return "FAIL"
-            if eaten=="FAIL" and attempt ==0:
+            if eaten=="FAIL" and attempt == 0:
                 self.error(tokenType)
 
     def root(self):
@@ -102,6 +136,7 @@ class Parser:
         statements = []
         while self.getCurrTokenType() != LexName.BLOCKR:
             statements.append(self.statement())
+
         block = Block()
         block.statements = statements
         return block
@@ -112,6 +147,8 @@ class Parser:
         node = None
         if self.getCurrTokenType() == LexName.BLOCKL:
             node = self.block()
+            statement.node = node
+            return statement
         elif self.getCurrTokenType() == LexName.VALUECALL:
             node = self.valueCall()
         elif self.getCurrTokenType() == LexName.DEF:
@@ -124,9 +161,10 @@ class Parser:
             node = self.flowStatement()
         else:
             node = self.exp1()
+        statement.node = node
         if self.eat(LexName.SEMI) == "DELETE":
             self.needReparse = True
-        statement.node=node
+
         return statement
 
     def exp1(self):
@@ -173,7 +211,7 @@ class Parser:
 
     def factor(self):
         token = self.getCurrToken()
-        node = None
+        node = AST()
         if token.type == LexName.INTEGER_CONST:
             self.eat()
             node = Integer(token)
@@ -189,7 +227,7 @@ class Parser:
         elif token.type in [LexName.TRUE,LexName.FALSE]:
             self.eat()
             node = Boolean(token)
-        elif token.type in [LexName.VALUECALL,LexName.PRINT]:
+        elif token.type in [LexName.VALUECALL,LexName.PRINT,LexName.INPUT]:
             node = self.valueCall()
         elif token.type == LexName.PARENTHISISL:
             self.eat()
@@ -199,15 +237,24 @@ class Parser:
             self.eat()
             node = self.exp1()
             node.negation = True
+        else:
+            # node is empty
+            node.isEmpty = True
         return node
 
     def valueCall(self):
         node = None
         name = self.getCurrToken().value
         self.eat()
-        if name == LexName.PRINT:
-            node = PrintStatement
-        if self.getCurrTokenType() == LexName.PARENTHISISL:
+        if self.getCurrTokenType() == LexName.PRINT:
+            node = self.functionCall(name)
+            self.eat(LexName.PARENTHISISR)
+            node = PrintStatement(node.name,node.parameters)
+        elif self.getCurrTokenType() == LexName.INPUT:
+            node = self.functionCall(name)
+            self.eat(LexName.PARENTHISISR)
+            node = InputStatement(node.name, node.parameters)
+        elif self.getCurrTokenType() == LexName.PARENTHISISL:
             #funcionCall
             self.eat()
             node = self.functionCall(name)
@@ -220,7 +267,19 @@ class Parser:
             node = ArrayCall(name,index)
         else:
             # variableCall
-            node = ValueCall(name)
+            value = None
+            if (self.getCurrTokenType() in LexName.CompareOperators):
+                self.delCurrentToken()
+                self.tokenList.insert(self.tokenNo, Token(LexName.ASSIGN, None,self.getPrevToken().pos))
+            if self.getCurrTokenType() == LexName.ASSIGN or self.getCurrTokenType() in LexName.AdvancedAssign:
+                token = self.getCurrToken()
+                self.eat()
+                value = self.exp1()
+                node = VariableAssign(name,token, value)
+            else:
+                #simpleValueCall
+                node = ValueCall(name)
+
         return node
 
     def functionDefinition(self):
@@ -247,6 +306,9 @@ class Parser:
                     if self.getCurrTokenType() == LexName.PARENTHISISR:
                         break
                     self.eat(LexName.COMMA)
+                    if self.getCurrTokenType() == LexName.PARENTHISISR:
+                        self.tokenNo-=1
+                        self.delCurrentToken()
                 self.eat()
                 body = self.block()
                 return FunctionDeclaration(tp,name,parameters,body)
@@ -276,6 +338,17 @@ class Parser:
             self.eat(LexName.VALUECALL)
             return FnParameter(tp,name,isArray)
 
+    def assign(self,node:VariableAssign):
+        if (self.getCurrTokenType() in LexName.CompareOperators) or (self.getCurrTokenType() in LexName.AdvancedAssign):
+            self.delCurrentToken()
+            self.tokenList.insert(self.tokenNo,Token(LexName.ASSIGN,None,self.makeNewPosition(self.getPrevToken())))
+        if self.getCurrTokenType() == LexName.ASSIGN:
+            self.eat()
+            value = self.exp1()
+            node.value = value
+        return node
+
+
     def variableDeclaration(self):
         tp = self.getCurrToken().type
         self.eat()
@@ -292,7 +365,7 @@ class Parser:
         value = None
         if (self.getCurrTokenType() in LexName.CompareOperators) or (self.getCurrTokenType() in LexName.AdvancedAssign):
             self.delCurrentToken()
-            self.tokenList.insert(self.tokenNo,Token(LexName.ASSIGN,None))
+            self.tokenList.insert(self.tokenNo,Token(LexName.ASSIGN,None,self.makeNewPosition(self.getPrevToken())))
         if self.getCurrTokenType() == LexName.ASSIGN:
             self.eat()
             value = self.exp1()

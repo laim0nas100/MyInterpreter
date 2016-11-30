@@ -17,6 +17,11 @@ class XMLEXP:
 
 class AST:
     className = "AST"
+    def __init__(self):
+        self.isEmpty = False
+
+    def isEmpty(self):
+        return self.isEmpty
 
     def __str__(self):
         return ""
@@ -34,7 +39,11 @@ class Block(AST):
     className = "Block"
 
     def __init__(self):
+        super().__init__()
         self.statements = list()
+
+    def isEmpty(self):
+        return self.statements.__len__() == 0
 
     def __str__(self):
         s = "{\n"
@@ -183,12 +192,12 @@ class Statement(AST):
     className = "Statement"
 
     def __init__(self):
+        super().__init__()
         self.node = None
         self.deleteMe = False
 
     def __str__(self):
-        for n in self.nodes:
-            print(n)
+        print(self.node)
 
     def xml(self,ob=className):
         s=self.toxml(ob)
@@ -283,7 +292,8 @@ class IfStatement(Statement):
 class Literall(AST):
     className = "Literall"
 
-    def __init__(self,token:Token):
+    def __init__(self, token: Token):
+        super().__init__()
         self.token = token
 
     def getValue(self):
@@ -315,6 +325,7 @@ class Float(Integer):
 
 class String(Literall):
     className = "String_const"
+
     def __init__(self, token:Token):
         super().__init__(token)
 
@@ -323,6 +334,7 @@ class String(Literall):
 
 class Boolean(Literall):
     className = "Bool_const"
+
     def __init__(self, token:Token):
         super().__init__(token)
 
@@ -331,6 +343,7 @@ class Boolean(Literall):
 
 class Null(Literall):
     className = "Null_const"
+
     def __init__(self, token:Token):
         super().__init__(token)
 
@@ -341,7 +354,8 @@ class BinaryOperator(AST):
 
     className = "BinaryOperator"
 
-    def __init__(self,left:AST,op:Token,right:AST):
+    def __init__(self, left: AST, op: Token, right: AST):
+        super().__init__()
         self.left = left
         self.op = op
         self.right = right
@@ -365,14 +379,32 @@ class BinaryOperator(AST):
             s += self.toxml("NOT",True)
         return s
 
+
+
 class ValueCall(AST):
     className = "ValueCall"
 
-    def __init__(self,name):
+    def __init__(self, name):
+        super().__init__()
         self.name = name
 
     def xml(self,ob=className):
         return self.toxml(ob)+str(self.name)+self.toxml(ob,True)
+
+class VariableAssign(ValueCall):
+    className = "VariableAssign"
+
+    def __init__(self, name,operator:Token, value:AST):
+        super().__init__(name)
+        self.value = value
+        self.operator = operator
+
+    def xml(self,ob=className):
+        s = self.toxml(ob)
+        s+= super().xml()
+        s+= self.value.xml()
+        s+= self.toxml(ob,True)
+        return s
 
 class FunctionCall(ValueCall):
     className = "FunctionCall"

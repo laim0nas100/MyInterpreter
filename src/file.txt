@@ -1,10 +1,22 @@
-/*
-string s = "ok\" ok";
+def int f(int[] a,float[] c){
+   int b = 3*12+3+1;
+   return 10;
+};
+
 {
-    //int a = 10+(15*2) + b(1,12+3);
-    //string s = null;
+
+};
+a = a;
+
+
+string s = "ok\" ok";
+string s1 ="";
+
+{
+    int a = 10+(15*2) + b(1,12+3);
+    string s = null;
     int[10+10] array;
-    //return 10;
+    return 10;
 };
 
 def int f(int[] a,float[] c){
@@ -12,17 +24,17 @@ def int f(int[] a,float[] c){
    return 10;
 };
 
-for (int i =1; i < 10; i+=1;){
+while (True) {
+    print("p");
+    string s = input("feed me");
+    string __ = 1.1;
+};
 
-    };
+
+/*
+Bottom-up parsing was driven by tables which made the algorithm fast for correct inputs, but unable to accurately diagnose faulty ones.
+The subset of grammars parsed was still not quite large enough, even for conservative language designers.
+And bottom-up parsing was very unfriendly to custom hacks, which made every shortcoming loom large.
+It is much harder to work around a problem in a bottom-up parser than than it is to deal with a similar shortcoming in a top-down parser.
+After decades of experience with bottom-up parsing, top-down parsing has re-emerged as the algorithm of choice.
 */
-
-while True {
-    print("p")
-    string f *= 1.1
-}
-
-
-
-
-//((3BO*12)BO+3); (3BO*(12BO+3));
