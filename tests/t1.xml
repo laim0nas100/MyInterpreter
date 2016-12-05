@@ -1,0 +1,93 @@
+<Root>
+Label 0B
+Number 0
+Parents[]
+Children[0, 1]
+<Statement>
+<WhileLoop>
+While<BinaryOperator>
+<Int_Const>
+1</Int_Const>
+EQUALS<Int_Const>
+0</Int_Const>
+</BinaryOperator>
+do<Block>
+Label 0B0B
+Number 0
+Parents[0]
+Children[]
+<Statement>
+<VariableAssign>
+<ValueCall>
+i</ValueCall>
+<Int_Const>
+1</Int_Const>
+</VariableAssign>
+</Statement>
+</Block>
+</WhileLoop>
+</Statement>
+<Statement>
+<Block>
+Label 1B0B
+Number 1
+Parents[0]
+Children[0]
+<Statement>
+<ArrayDeclaration>
+<VariableDeclaration>
+<Type>
+INT
+</Type>
+name =array</VariableDeclaration>
+size=<Int_Const>
+10</Int_Const>
+
+</ArrayDeclaration>
+</Statement>
+<Statement>
+<Block>
+Label 0B1B0B
+Number 0
+Parents[1]
+Children[]
+<Statement>
+<VariableInitialization>
+<VariableDeclaration>
+<Type>
+INT
+</Type>
+name =a</VariableDeclaration>
+value=<BinaryOperator>
+<BinaryOperator>
+<BinaryOperator>
+<Int_Const>
+11</Int_Const>
+MULTIPLY<ValueCall>
+a</ValueCall>
+</BinaryOperator>
+PLUS<BinaryOperator>
+<Int_Const>
+21</Int_Const>
+MINUS<Int_Const>
+2</Int_Const>
+</BinaryOperator>
+</BinaryOperator>
+DIVIDE<ArrayCall>
+<ValueCall>
+a</ValueCall>
+<BinaryOperator>
+<Int_Const>
+0</Int_Const>
+PLUS<Int_Const>
+1</Int_Const>
+</BinaryOperator>
+</ArrayCall>
+</BinaryOperator>
+</VariableInitialization>
+</Statement>
+</Block>
+</Statement>
+</Block>
+</Statement>
+</Root>

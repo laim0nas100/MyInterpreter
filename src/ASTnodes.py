@@ -16,9 +16,12 @@ class XMLEXP:
 
 
 class AST:
+    globalIndex = 0
     className = "AST"
     def __init__(self):
         self.isEmpty = False
+        self.number = AST.globalIndex
+        AST.globalIndex+=1
 
     def isEmpty(self):
         return self.isEmpty
@@ -41,6 +44,9 @@ class Block(AST):
     def __init__(self):
         super().__init__()
         self.statements = list()
+        self.children = list()
+        self.parents = list()
+        self.label = ""
 
     def isEmpty(self):
         return self.statements.__len__() == 0
@@ -53,6 +59,10 @@ class Block(AST):
 
     def xml(self,ob=className) ->str:
         s = self.toxml(ob)
+        s+= "Label " +str(self.label)+"\n"
+        s+= "Number "+str(self.number)+"\n"
+        s+= "Parents"+str(self.parents)+"\n"
+        s+= "Children"+str(self.children)+"\n"
         for st in self.statements:
             s+= st.xml()
         s+= self.toxml(ob,True)
@@ -73,7 +83,8 @@ class Root(Block):
 class Type(AST):
     className = "Type"
 
-    def __init__(self,tp,isArray=False):
+    def __init__(self, tp, isArray=False):
+        super().__init__()
         self.type = tp
         self.isArray = isArray
 
@@ -242,22 +253,22 @@ class ContinueStatement(Statement):
 class WhileLoop(Statement):
     className = "WhileLoop"
 
-    def __init__(self,condition:AST,block:Statement):
+    def __init__(self,condition:AST,block:Block):
         super().__init__()
         self.condition = condition
-        self.block = block
+        self.node = block
 
     def xml(self,ob=className):
         s = self.toxml(ob)
         s += "While" + self.condition.xml()+ "do"
-        s += self.block.xml()
+        s += self.node.xml()
         s += self.toxml(ob,True)
         return s
 
 class ForLoop(WhileLoop):
     className = "ForLoop"
 
-    def __init__(self, condition:Statement, block:Statement,var:Statement = None,incrementStatement:Statement=None):
+    def __init__(self, condition:Statement, block:Block,var:Statement = None,incrementStatement:Statement=None):
         super().__init__(condition, block)
         self.var = var
         self.incrementStatement = incrementStatement
@@ -268,7 +279,7 @@ class ForLoop(WhileLoop):
         s += self.incrementStatement.xml()
         s += "For" + self.condition.xml()+ "do"
 
-        s += self.block.xml()
+        s += self.node.xml()
         s += self.toxml(ob,True)
         return s
 
@@ -372,7 +383,7 @@ class BinaryOperator(AST):
 
 
         s += str(self.left.xml())
-        s += "Operator"+str(self.op.value)
+        s += str(self.op.type)
         s += str(self.right.xml())
         s+= self.toxml(ob,True)
         if self.negation:
@@ -404,6 +415,22 @@ class VariableAssign(ValueCall):
         s+= super().xml()
         s+= self.value.xml()
         s+= self.toxml(ob,True)
+        return s
+
+
+class ArrayElementAssign(VariableAssign):
+    className = "ArrayElementAssign"
+
+    def __init__(self, name, operator: Token, value: AST, index:AST):
+        super().__init__(name,operator,value)
+        self.index = index
+
+    def xml(self, ob=className):
+        s = self.toxml(ob)
+        s += super().xml()
+        s += self.value.xml()
+        s += self.index.xml()
+        s += self.toxml(ob, True)
         return s
 
 class FunctionCall(ValueCall):

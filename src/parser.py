@@ -14,6 +14,9 @@ class ParserException(Exception):
 class Parser:
     __fixingRange = 1
     __maxSemiInsertionCount = 3
+    __currentBlock = Block()
+    __parentBlock = Block()
+
 
     def __init__(self,tokenList:list):
         self.tokenList = tokenList
@@ -22,6 +25,7 @@ class Parser:
         self.timesInsertedSemi = 0
         self.needReparse = False
         self.errorToken = None
+
 
     def makeNewPosition(self,prevToken):
         nextToken = None
@@ -121,7 +125,12 @@ class Parser:
 
     def root(self):
         self.tokenNo = 0
+
         root = Root()
+        root.number = 0
+        Parser.__currentBlock = root
+        Parser.__parentBlock = None
+        root.label = "0B"
         while self.getCurrTokenType()!= LexName.EOF:
             root.statements.append(self.statement())
         return root
@@ -132,13 +141,31 @@ class Parser:
         self.eat(LexName.BLOCKR)
         return node
 
-    def blockBody(self):
+    def blockBody(self,blockForsed = False):
         statements = []
+        block = Block()
+
+        #Scope management
+
+        saveParentBlock = Parser.__parentBlock
+        Parser.__parentBlock = Parser.__currentBlock
+        parentLabel = "0B"
+        if Parser.__parentBlock is not None:
+            parentLabel = Parser.__parentBlock.label
+        block.parents.append(Parser.__currentBlock.number)
+        Parser.__currentBlock = block
+        block.number = Parser.__parentBlock.children.__len__()
+        Parser.__parentBlock.children.append(block.number)
+        block.label = str(block.number)+ "B" + parentLabel
         while self.getCurrTokenType() != LexName.BLOCKR:
             statements.append(self.statement())
-
-        block = Block()
+            if blockForsed:
+                break
         block.statements = statements
+        #Simulate stack behaviour
+        Parser.__currentBlock = Parser.__parentBlock
+        Parser.__parentBlock = saveParentBlock
+
         return block
 
     def statement(self):
@@ -150,7 +177,12 @@ class Parser:
             statement.node = node
             return statement #no semicolon afterwards
         elif self.getCurrTokenType() in [LexName.VALUECALL,LexName.PRINT,LexName.INPUT]:
-            node = self.valueCall()
+            saveCurrentTokenIndex = self.tokenNo
+            try:
+                node = self.valueCall(True)
+            except Exception:
+                self.tokenNo = saveCurrentTokenIndex
+                node = self.exp1()
         elif self.getCurrTokenType() == LexName.DEF:
             node = self.functionDefinition()
             statement.node = node
@@ -246,40 +278,60 @@ class Parser:
             node.isEmpty = True
         return node
 
-    def valueCall(self):
+    def valueCall(self,assign=False):
         node = None
         name = self.getCurrToken().value
         saveTokenType = self.getCurrTokenType()
         self.eat()
-        if self.getCurrTokenType() == LexName.PARENTHISISL:
-            #funcionCall
-            self.eat()
-            node = self.functionCall(name)
-            self.eat(LexName.PARENTHISISR)
-            if saveTokenType == LexName.PRINT:
-                node = PrintStatement(name,node.parameters)
-            elif saveTokenType == LexName.INPUT:
-                node = InputStatement(name, node.parameters)
-        elif self.getCurrTokenType() == LexName.BRACKETL:
-            # arrayCall
-            self.eat()
-            index = self.exp1()
-            self.eat(LexName.BRACKETR)
-            node = ArrayCall(name,index)
+        if not assign:
+            if self.getCurrTokenType() == LexName.PARENTHISISL:
+                #funcionCall
+                self.eat()
+                node = self.functionCall(name)
+                self.eat(LexName.PARENTHISISR)
+                if saveTokenType == LexName.PRINT:
+                    node = PrintStatement(name,node.parameters)
+                elif saveTokenType == LexName.INPUT:
+                    node = InputStatement(name, node.parameters)
+            elif self.getCurrTokenType() == LexName.BRACKETL:
+                # arrayCall
+                self.eat()
+                index = self.exp1()
+                self.eat(LexName.BRACKETR)
+                node = ArrayCall(name,index)
+            else:
+                # simpleValueCall
+                node = ValueCall(name)
+
         else:
-            # variableCall
+            #assignment
             value = None
-            if (self.getCurrTokenType() in LexName.CompareOperators):
-                self.delCurrentToken()
-                self.tokenList.insert(self.tokenNo, Token(LexName.ASSIGN, None,self.getPrevToken().pos))
+            array = False
+            index = None
+            if self.getCurrTokenType() == LexName.BRACKETL:
+                # arrayCall
+                self.eat()
+                index = self.exp1()
+                self.eat(LexName.BRACKETR)
+                array = True
+            #variableAssign
+
+            if (self.getCurrTokenType() in LexName.CompareOperators) and not assign:
+                try:
+                    self.delCurrentToken()
+                    self.tokenList.insert(self.tokenNo, Token(LexName.ASSIGN, None,self.getPrevToken().pos))
+                except AttributeError:
+                    pass
             if self.getCurrTokenType() == LexName.ASSIGN or self.getCurrTokenType() in LexName.AdvancedAssign:
                 token = self.getCurrToken()
                 self.eat()
                 value = self.exp1()
-                node = VariableAssign(name,token, value)
+                if array:
+                    node = ArrayElementAssign(name,token,value,index)
+                else:
+                    node = VariableAssign(name,token, value)
             else:
-                #simpleValueCall
-                node = ValueCall(name)
+                raise Exception("Nope")
 
         return node
 
@@ -392,7 +444,7 @@ class Parser:
         if tokenType == LexName.WHILE:
             exp = self.exp1()
             self.eat(LexName.PARENTHISISR)
-            block = self.statement()
+            block = self.blockBody(True)
             node = WhileLoop(exp,block)
         elif tokenType == LexName.FOR:
 
@@ -401,7 +453,7 @@ class Parser:
             increment = self.statement()
             self.eat(LexName.PARENTHISISR)
 
-            block = self.statement()
+            block = self.block()
             node = ForLoop(condition,block,var,increment)
         else:
             node = IfStatement(self.exp1())

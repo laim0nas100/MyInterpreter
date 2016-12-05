@@ -17,6 +17,9 @@ string s1 ="";
     string s = null;
     int[10+10] array;
     return 10;
+    if (True){
+        print("OK")
+    }
 }
 
 def int f(int[] a,float[] c){
@@ -31,6 +34,11 @@ while (True) {
 }
 
 if (True) print("OK"); else if(False) input("NOPE");
+if (False){
+    print("nope");
+} else if (1==1){
+    print("Ok");
+}
 
 /*
 Bottom-up parsing was driven by tables which made the algorithm fast for correct inputs, but unable to accurately diagnose faulty ones.

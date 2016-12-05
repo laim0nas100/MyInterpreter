@@ -97,6 +97,7 @@ class Lexer(object):
     def __init__(self, text):
         file = open(text,"r")
         self.lines = file.readlines()
+        self.lines.append("\n")
         self.text = self.lines[0]
         self.pos = Pos(0,0)
         self.tokenList = list()
