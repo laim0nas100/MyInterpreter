@@ -4,35 +4,70 @@ Number 0
 Parents[]
 Children[0, 1]
 <Statement>
-<WhileLoop>
-While<BinaryOperator>
-<Int_Const>
-1</Int_Const>
-EQUALS<Int_Const>
-0</Int_Const>
-</BinaryOperator>
-do<Block>
+<FunctionDeclaration>
+<VariableDeclaration>
+<Type>
+INT[]
+</Type>
+name =f</VariableDeclaration>
+<FnParameter>
+<VariableDeclaration>
+<Type>
+INT
+</Type>
+name =i</VariableDeclaration>
+</FnParameter>
+<Block>
 Label 0B0B
+Number 0
+Parents[0]
+Children[0, 1]
+<Statement>
+<IfStatement>
+if<ValueCall>
+ok</ValueCall>
+do<Block>
+Label 0B0B0B
 Number 0
 Parents[0]
 Children[]
 <Statement>
-<VariableAssign>
+<ReturnStatement>
+<FunctionCall>
+<ValueCall>
+f</ValueCall>
+<Arguments>
+<Arg>
+<BinaryOperator>
 <ValueCall>
 i</ValueCall>
-<Int_Const>
+MINUS<Int_Const>
 1</Int_Const>
-</VariableAssign>
+</BinaryOperator>
+</Arg>
+</Arguments>
+</FunctionCall>
+</ReturnStatement>
 </Statement>
 </Block>
-</WhileLoop>
-</Statement>
-<Statement>
-<Block>
-Label 1B0B
+else do<Block>
+Label 1B0B0B
 Number 1
 Parents[0]
-Children[0]
+Children[]
+<Statement>
+<ReturnStatement>
+<BinaryOperator>
+<ValueCall>
+i</ValueCall>
+MULTIPLY<ValueCall>
+i</ValueCall>
+</BinaryOperator>
+</ReturnStatement>
+</Statement>
+</Block>
+</IfStatement>
+</Statement>
 <Statement>
 <ArrayDeclaration>
 <VariableDeclaration>
@@ -41,53 +76,114 @@ INT
 </Type>
 name =array</VariableDeclaration>
 size=<Int_Const>
-10</Int_Const>
+5</Int_Const>
 
 </ArrayDeclaration>
 </Statement>
 <Statement>
-<Block>
-Label 0B1B0B
-Number 0
-Parents[1]
-Children[]
+<ReturnStatement>
+<ValueCall>
+array</ValueCall>
+</ReturnStatement>
+</Statement>
+</Block>
+</FunctionDeclaration>
+</Statement>
+<Statement>
+<ForLoop>
 <Statement>
 <VariableInitialization>
 <VariableDeclaration>
 <Type>
 INT
 </Type>
-name =a</VariableDeclaration>
-value=<BinaryOperator>
-<BinaryOperator>
-<BinaryOperator>
-<Int_Const>
-11</Int_Const>
-MULTIPLY<ValueCall>
-a</ValueCall>
-</BinaryOperator>
-PLUS<BinaryOperator>
-<Int_Const>
-21</Int_Const>
-MINUS<Int_Const>
-2</Int_Const>
-</BinaryOperator>
-</BinaryOperator>
-DIVIDE<ArrayCall>
-<ValueCall>
-a</ValueCall>
-<BinaryOperator>
-<Int_Const>
+name =i</VariableDeclaration>
+value=<Int_Const>
 0</Int_Const>
-PLUS<Int_Const>
-1</Int_Const>
-</BinaryOperator>
-</ArrayCall>
-</BinaryOperator>
 </VariableInitialization>
 </Statement>
-</Block>
+<Statement>
+<VariableAssign>
+<ValueCall>
+i</ValueCall>
+<Int_Const>
+1</Int_Const>
+</VariableAssign>
+</Statement>
+For<Bool_const>
+true</Bool_const>
+do<Block>
+Label 1B0B
+Number 1
+Parents[0]
+Children[0, 1]
+<Statement>
+<IfStatement>
+if<BinaryOperator>
+<FunctionCall>
+<ValueCall>
+f</ValueCall>
+<Arguments>
+<Arg>
+<Int_Const>
+2</Int_Const>
+</Arg>
+<Arg>
+<FunctionCall>
+<ValueCall>
+f</ValueCall>
+<Arguments>
+<Arg>
+<Int_Const>
+5</Int_Const>
+</Arg>
+</Arguments>
+</FunctionCall>
+</Arg>
+</Arguments>
+</FunctionCall>
+GREATER<Int_Const>
+4</Int_Const>
+</BinaryOperator>
+do<Block>
+Label 0B1B0B
+Number 0
+Parents[1]
+Children[]
+<Statement>
+<PrintCall>
+<ValueCall>
+print</ValueCall>
+<Arguments>
+<Arg>
+<FunctionCall>
+<ValueCall>
+f</ValueCall>
+<Arguments>
+<Arg>
+<Int_Const>
+13</Int_Const>
+</Arg>
+</Arguments>
+</FunctionCall>
+</Arg>
+</Arguments>
+</PrintCall>
+</Statement>
+<Statement>
+<ContinueStatement>
+</ContinueStatement>
 </Statement>
 </Block>
+else do<Block>
+Label 1B1B0B
+Number 1
+Parents[1]
+Children[]
+</Block>
+</IfStatement>
+</Statement>
+</Block>
+</ForLoop>
 </Statement>
 </Root>

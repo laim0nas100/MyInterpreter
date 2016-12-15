@@ -6,9 +6,9 @@ ASSIGN =
 AND &&
 OR ||
 EQUALS ==
-GREATER <
+GREATER >
 LESSEQUAL <=
-LESS >
+LESS <
 GREATEREQUAL >=
 NOTEQUAL !=
 NOT !
@@ -28,6 +28,7 @@ DEF def
 FOR for
 IF if
 ELSE else
+ELIF elif
 WHILE while
 RETURN return
 BREAK break

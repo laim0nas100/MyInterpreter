@@ -48,6 +48,9 @@ class Parser:
         self.tokenNo+=1
         return self.tokenList[self.tokenNo]
 
+    def peekNextToken(self,amount =1):
+        return self.tokenList[self.tokenNo+amount]
+
     def getPrevTokenType(self):
         token = LexName.ESC
         try:
@@ -135,13 +138,16 @@ class Parser:
             root.statements.append(self.statement())
         return root
 
-    def block(self):
-        self.eat(LexName.BLOCKL)
-        node = self.blockBody()
-        self.eat(LexName.BLOCKR)
+    def block(self,forced=False):
+        if forced:
+            node = self.blockBody(forced)
+        else:
+            self.eat(LexName.BLOCKL)
+            node = self.blockBody()
+            self.eat(LexName.BLOCKR)
         return node
 
-    def blockBody(self,blockForsed = False):
+    def blockBody(self,blockForced = False):
         statements = []
         block = Block()
 
@@ -157,9 +163,10 @@ class Parser:
         block.number = Parser.__parentBlock.children.__len__()
         Parser.__parentBlock.children.append(block.number)
         block.label = str(block.number)+ "B" + parentLabel
+
         while self.getCurrTokenType() != LexName.BLOCKR:
             statements.append(self.statement())
-            if blockForsed:
+            if blockForced:
                 break
         block.statements = statements
         #Simulate stack behaviour
@@ -202,6 +209,10 @@ class Parser:
             self.needReparse = True
 
         return statement
+
+    def generateToken(self,LEXNAME):
+        return Token(LEXNAME,"",self.makeNewPosition(self.getPrevToken()))
+
 
     def exp1(self):
         node = self.exp2()
@@ -247,7 +258,7 @@ class Parser:
 
     def factor(self):
         token = self.getCurrToken()
-        node = AST()
+        node = EXP()
         if token.type == LexName.INTEGER_CONST:
             self.eat()
             node = Integer(token)
@@ -290,9 +301,9 @@ class Parser:
                 node = self.functionCall(name)
                 self.eat(LexName.PARENTHISISR)
                 if saveTokenType == LexName.PRINT:
-                    node = PrintStatement(name,node.parameters)
+                    node = PrintCall(name, node.parameters)
                 elif saveTokenType == LexName.INPUT:
-                    node = InputStatement(name, node.parameters)
+                    node = InputCall(name, node.parameters)
             elif self.getCurrTokenType() == LexName.BRACKETL:
                 # arrayCall
                 self.eat()
@@ -316,16 +327,12 @@ class Parser:
                 array = True
             #variableAssign
 
-            if (self.getCurrTokenType() in LexName.CompareOperators) and not assign:
-                try:
-                    self.delCurrentToken()
-                    self.tokenList.insert(self.tokenNo, Token(LexName.ASSIGN, None,self.getPrevToken().pos))
-                except AttributeError:
-                    pass
             if self.getCurrTokenType() == LexName.ASSIGN or self.getCurrTokenType() in LexName.AdvancedAssign:
                 token = self.getCurrToken()
                 self.eat()
                 value = self.exp1()
+                if value.isEmpty:
+                    value = Null(Token(LexName.NULL,"",self.makeNewPosition(self.getPrevToken())))
                 if array:
                     node = ArrayElementAssign(name,token,value,index)
                 else:
@@ -347,6 +354,11 @@ class Parser:
         if self.getCurrTokenType() in LexName.Types:
             tp = Type(self.getCurrTokenType())
             self.eat()
+
+            if self.getCurrTokenType() == LexName.BRACKETL:
+                self.eat()
+                self.eat(LexName.BRACKETR)
+                tp.isArray = True
             if self.getCurrTokenType() == LexName.VALUECALL:
 
                 name = self.getCurrToken().value
@@ -391,17 +403,6 @@ class Parser:
             self.eat(LexName.VALUECALL)
             return FnParameter(tp,name,isArray)
 
-    def assign(self,node:VariableAssign):
-        if (self.getCurrTokenType() in LexName.CompareOperators) or (self.getCurrTokenType() in LexName.AdvancedAssign):
-            self.delCurrentToken()
-            self.tokenList.insert(self.tokenNo,Token(LexName.ASSIGN,None,self.makeNewPosition(self.getPrevToken())))
-        if self.getCurrTokenType() == LexName.ASSIGN:
-            self.eat()
-            value = self.exp1()
-            node.value = value
-        return node
-
-
     def variableDeclaration(self):
         tp = self.getCurrToken().type
         self.eat()
@@ -422,6 +423,8 @@ class Parser:
         if self.getCurrTokenType() == LexName.ASSIGN:
             self.eat()
             value = self.exp1()
+        if value is None:
+            value = Null(Token(LexName.NULL, "", self.makeNewPosition(self.getPrevToken())))
         return VariableInitialization(tp,name,value)
 
     def exitStatement(self):
@@ -440,29 +443,51 @@ class Parser:
         node = None
         tokenType = self.getCurrTokenType()
         self.eat()
-        self.eat(LexName.PARENTHISISL)
+
         if tokenType == LexName.WHILE:
+            self.eat(LexName.PARENTHISISL)
             exp = self.exp1()
             self.eat(LexName.PARENTHISISR)
-            block = self.blockBody(True)
+            block = self.block()
             node = WhileLoop(exp,block)
         elif tokenType == LexName.FOR:
-
+            self.eat(LexName.PARENTHISISL)
             var = self.statement()
-            condition = self.statement()
+            condition = self.exp1()
+            self.eat(LexName.SEMI)
             increment = self.statement()
             self.eat(LexName.PARENTHISISR)
 
             block = self.block()
             node = ForLoop(condition,block,var,increment)
         else:
-            node = IfStatement(self.exp1())
-            self.eat(LexName.PARENTHISISR)
+            node = self.ifStatement()
+        return node
 
-            node.blocks.append(self.statement())
-            if self.getCurrTokenType() == LexName.ELSE:
-                self.eat()
-                node.blocks.append(self.statement())
+    def ifStatement(self,node:IfStatement=None):
+        if node is None:
+            exp = self.exp1()
+            if(exp.isEmpty):
+                raise ParserException("Expression in empty",self.getCurrToken())
+            node = IfStatement(exp)
+            node.blocks.append(self.block())
+            return self.ifStatement(node)
+        elif self.getCurrTokenType() == LexName.ELSE:
+            if node.containsElse:
+                raise ParserException("Multiple ELSE case",self.getCurrToken())
+            self.eat()
+            node.containsElse = True
+            node.blocks.append(self.block())
+            return self.ifStatement(node)
+        elif self.getCurrTokenType() == LexName.ELIF:
+            self.eat()
+            exp = self.exp1()
+            if (exp.isEmpty):
+                raise ParserException("Expression in empty",self.getCurrToken())
+            node.condition.append(exp)
+            node.blocks.append(self.block())
+            return self.ifStatement(node)
+
         return node
 
     def countBlocks(self):

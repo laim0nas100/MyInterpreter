@@ -30,6 +30,7 @@ class LexName:
     FOR = "FOR"
     IF = "IF"
     ELSE = "ELSE"
+    ELIF = "ELIF"
     WHILE = "WHILE"
     RETURN = "RETURN"
     BREAK = "BREAK"

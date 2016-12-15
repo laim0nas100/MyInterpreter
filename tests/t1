@@ -1,7 +1,53 @@
-while(1==0) i=1;
-{
-int[10] array;
-{
-int a = ((11*a + (21-2)) / a[0+1]);
+
+//int a = 10+"1000";
+//b = a + b * 3 - (c +5);
+//int a = ((11*a + (21-2)) / a[0+1]);
+/*
+while(i<10){
+    int[4] arr;
 }
+{
+for(int i =0; i>0; i-=1;){
+    p = Null;
+}
+o=0;
+}
+
+*/
+//int[10] array;
+//array[1] = ar[2] + ar[10];
+/*
+def int f(int i,int j){
+    return i*j;
+}
+int[5] ar;
+ar[0] = f(f(2,2),ar[2]);
+
+if (true) {
+    print(true);
+}elif(false){
+    print("OK");
+}else{
+    return 0;
+}
+*/
+def int[] f(int i){
+        if(ok){
+            return f(i-1);
+        }else{
+            return i*i;
+        }
+        int[5] array;
+        return array;
+    }
+for(int i=0;true;i+=1;){
+
+    if(f(2,f(5))>4){
+        print(f(13));
+        continue;
+    }else{
+        //break;
+        //a[1] = a[2]+a[1+a[1]];
+    }
+
 }

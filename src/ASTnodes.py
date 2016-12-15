@@ -9,11 +9,6 @@ def wrapxml(string,end=False)-> str:
     s+=str(string)+">"
     return s+"\n"
 
-class XMLEXP:
-
-    def __init__(self,name):
-        self.name = name
-
 
 class AST:
     globalIndex = 0
@@ -47,6 +42,9 @@ class Block(AST):
         self.children = list()
         self.parents = list()
         self.label = ""
+
+    def exitLabel(self):
+        return "E"+self.label
 
     def isEmpty(self):
         return self.statements.__len__() == 0
@@ -250,10 +248,21 @@ class ContinueStatement(Statement):
         s = super().xml(ob)
         return s
 
+class EXP(AST):
+    className = "EXP"
+    def __init__(self):
+        super().__init__()
+
+    def toxml(self,ob = None, end = False)->str:
+        if ob is not None:
+            return wrapxml(ob,end)
+        else:
+            return wrapxml(self.className, end)
+
 class WhileLoop(Statement):
     className = "WhileLoop"
 
-    def __init__(self,condition:AST,block:Block):
+    def __init__(self,condition:EXP,block:Block):
         super().__init__()
         self.condition = condition
         self.node = block
@@ -268,7 +277,7 @@ class WhileLoop(Statement):
 class ForLoop(WhileLoop):
     className = "ForLoop"
 
-    def __init__(self, condition:Statement, block:Block,var:Statement = None,incrementStatement:Statement=None):
+    def __init__(self, condition:EXP, block:Block,var:Statement = None,incrementStatement:Statement=None):
         super().__init__(condition, block)
         self.var = var
         self.incrementStatement = incrementStatement
@@ -286,21 +295,29 @@ class ForLoop(WhileLoop):
 class IfStatement(Statement):
     className = "IfStatement"
 
-    def __init__(self, condition: AST):
+    def __init__(self, condition: EXP):
         super().__init__()
-        self.condition = condition
+        self.condition = [condition]
         self.blocks = []
+        self.containsElse = False
 
     def xml(self, ob=className):
         s = self.toxml(ob)
-        s += "if" + self.condition.xml() + "do"
+        i = 0
+        s += "if" + self.condition[0].xml() + "do"
         s += self.blocks[0].xml()
         if self.blocks.__len__()>1:
-            s += "else do" + self.blocks[1].xml()
+            lastIndex = self.condition.__len__()
+            for i in range(1,lastIndex):
+                s += "elif" + self.condition[i].xml() + "do"
+                s += self.blocks[i].xml()
+
+        if self.containsElse:
+            s += "else do" + self.blocks[self.blocks.__len__()-1].xml()
         s += self.toxml(ob, True)
         return s
 
-class Literall(AST):
+class Literall(EXP):
     className = "Literall"
 
     def __init__(self, token: Token):
@@ -361,7 +378,7 @@ class Null(Literall):
     def xml(self,ob=className):
         return self.toxml(ob)+str(self.token.value)+self.toxml(ob,True)
 
-class BinaryOperator(AST):
+class BinaryOperator(EXP):
 
     className = "BinaryOperator"
 
@@ -390,9 +407,7 @@ class BinaryOperator(AST):
             s += self.toxml("NOT",True)
         return s
 
-
-
-class ValueCall(AST):
+class ValueCall(EXP):
     className = "ValueCall"
 
     def __init__(self, name):
@@ -416,7 +431,6 @@ class VariableAssign(ValueCall):
         s+= self.value.xml()
         s+= self.toxml(ob,True)
         return s
-
 
 class ArrayElementAssign(VariableAssign):
     className = "ArrayElementAssign"
@@ -466,8 +480,8 @@ class ArrayCall(ValueCall):
         s += self.toxml(ob, True)
         return s
 
-class PrintStatement(FunctionCall):
-    className = "PrintStatement"
+class PrintCall(FunctionCall):
+    className = "PrintCall"
 
     def __init__(self, name, parameters: list):
         super().__init__(name, parameters)
@@ -475,10 +489,8 @@ class PrintStatement(FunctionCall):
     def xml(self,ob=className):
         return super().xml(ob)
 
-
-
-class InputStatement(FunctionCall):
-    className = "InputStatement"
+class InputCall(FunctionCall):
+    className = "PrintCall"
 
     def __init__(self, name, parameters: list):
         super().__init__(name, parameters)

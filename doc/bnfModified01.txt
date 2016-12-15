@@ -62,7 +62,7 @@ Laimonas Beniušis
 
 <block>                         ::= '{' <block-body> '}'
 <block-body>                    ::= { <statement> }
-<statement>                     ::= <inline-stmt> ';' | <exit-stmt> ';' | <flow-stmt> ';' | <block> ';'
+<statement>                     ::= <inline-stmt> ';' | <exit-stmt> ';' | <flow-stmt> ';' | <block>
 <inline-stmt>                   ::= <simple-stmt> | <exp1>
 <simple-stmt>                   ::= <declaration>  | <name> <value-assignment> | <io-stmt> 
 
@@ -79,7 +79,7 @@ Laimonas Beniušis
 <output-stmt>                   ::= 'print' <value>
 
 <flow-stmt>                     ::= <for-loop> | <while-loop> | <if-stmt>
-<for-loop>                      ::= 'for' '('[<value-assignment>] ';' <value> ';' [<inline-stmt-no-semi>] ')' <block>
+<for-loop>                      ::= 'for' '(' (<statement>|';') <value> ';' (<statement>|';') ')' <statement>
 <while-loop>                    ::= 'while' '(' <value> ')' <block>
 <if-stmt>                       ::= 'if' '(' <value> ')' <block> [ 'else' ( <block> | <if-stmt> ) ]
 <if-stmt-BNF>                   ::= 'if' '(' <value> ')' <block> | 'if' '(' <value> ')' <block>  'else'  <block> |'if' '(' <value> ')' <block>  'else' <if-stmt-BNF>

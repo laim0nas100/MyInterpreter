@@ -72,6 +72,12 @@ class ArrayList(list):
     def get(self,index:int):
         return self[index]
 
+    def extendAt(self, iterable, startAt=None):
+        if startAt is None:
+            super().extend(iterable)
+        else:
+            self[startAt:startAt] = iterable
+
 
 class Table:
     def __init__(self, data=None):
@@ -280,6 +286,34 @@ class Table:
                 index += 1
                 lineIndex += 1
         return table
+
+class OrderedMap(dict):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.keyOrder = list()
+
+    def containsKey(self,key):
+        return key in self
+
+    def containsValue(self,val):
+        return val in self.values()
+
+    def returnItemsInOrder(self):
+        l = []
+        for key in self.keyOrder:
+            l.append(self.get(key))
+        return l
+
+
+    def put(self,key,value):
+        if not self.containsKey(key):
+            self.setdefault(key,value)
+            self.keyOrder.append(key)
+
+
+    def clear(self):
+        super().clear()
+        self.keyOrder.clear()
 
 
 def cmp_to_key(mycmp):
