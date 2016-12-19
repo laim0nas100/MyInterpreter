@@ -1,5 +1,4 @@
 class LexName:
-
     PLUS = "PLUS"
     MINUS = "MINUS"
     MULTIPLY = "MULTIPLY"
@@ -34,7 +33,7 @@ class LexName:
     WHILE = "WHILE"
     RETURN = "RETURN"
     BREAK = "BREAK"
-    CONTINUE ="CONTINUE"
+    CONTINUE = "CONTINUE"
     PRINT = "PRINT"
     INPUT = "INPUT"
     TRUE = "TRUE"
@@ -56,14 +55,20 @@ class LexName:
     LEXER_ERROR = "LEXER_ERROR"
     VALUECALL = "VALUECALL"
     EOF = "EOF"
+
+    # Const must contain a substring of corresponding type
     INTEGER_CONST = "INTEGER_CONST"
     FLOAT_CONST = "FLOAT_CONST"
     STRING_CONST = "STRING_CONST"
+
     Types = [STRING, BOOL, INT, FLOAT]
-    AdvancedAssign = [ASSIGNPLUS,ASSIGNMINUS,ASSIGNMULTIPLY,ASSIGNDIVIDE]
+    AdvancedAssign = [ASSIGNPLUS, ASSIGNMINUS, ASSIGNMULTIPLY, ASSIGNDIVIDE]
     CompareOperators = [EQUALS, GREATER, LESSEQUAL, LESS, GREATEREQUAL, NOTEQUAL]
+    ArithMethicCompare = [GREATER, LESSEQUAL, LESS, GREATEREQUAL]
     LogicOperators = [AND, OR]
+    Operators = [ASSIGN, ASSIGNPLUS, ASSIGNMINUS, ASSIGNMULTIPLY, ASSIGNDIVIDE, PLUS, MINUS, MULTIPLY,DIVIDE,
+                 EQUALS, GREATER, LESSEQUAL, LESS, GREATEREQUAL, NOTEQUAL, AND, OR]
     AddSub = [PLUS, MINUS]
-    ExitStatements = [BREAK,RETURN,CONTINUE]
-    FlowStatements = [FOR,WHILE,IF]
-    RightClose = [PARENTHISISR,BRACKETR,BLOCKR]
+    ExitStatements = [BREAK, RETURN, CONTINUE]
+    FlowStatements = [FOR, WHILE, IF]
+    RightClose = [PARENTHISISR, BRACKETR, BLOCKR]

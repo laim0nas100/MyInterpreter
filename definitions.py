@@ -1,4 +1,14 @@
 import os
+class CustomException(Exception):
+    pass
+class LexerException(CustomException):
+    pass
+class ParserException(CustomException):
+    pass
+class SemanticException(CustomException):
+    pass
 
-ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
-print(ROOT_DIR)
+
+HOME_DIR = os.path.dirname(os.path.abspath(__file__))
+print(HOME_DIR)
+

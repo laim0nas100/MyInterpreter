@@ -47,3 +47,42 @@ And bottom-up parsing was very unfriendly to custom hacks, which made every shor
 It is much harder to work around a problem in a bottom-up parser than than it is to deal with a similar shortcoming in a top-down parser.
 After decades of experience with bottom-up parsing, top-down parsing has re-emerged as the algorithm of choice.
 */
+/*
+Block:0B
+ LABEL 0B;
+ LOAD _t0 ['INTEGER_CONST', 0];
+ INIT ['INT', 'val'] _t0;
+ CALLBLOCK 0B0B;
+ LABEL E0B;
+
+Block:0B0B
+ LOAD _t0 ['INTEGER_CONST', 0];
+ INIT ['INT', 'i'] _t0;
+ LABEL 0B0B;
+ LOAD _t0 i;
+ LOAD _t1 ['INTEGER_CONST', 10];
+ LESS _t0 _t1;
+ JUMPZ _t0 E0B0B;
+ CALLBLOCK 0B0B0B;
+ LABEL C0B0B;
+ LOAD _t0 ['INTEGER_CONST', 1];
+ ASSIGNPLUS i _t0;
+ JUMPBLOCK 0B0B;
+ LABEL E0B0B;
+
+Block:0B0B0B
+ LOAD _t0 ['INTEGER_CONST', 0];
+ INIT ['INT', 'j'] _t0;
+ LABEL 0B0B0B;
+ LOAD _t0 j;
+ LOAD _t1 ['INTEGER_CONST', 10];
+ LESS _t0 _t1;
+ JUMPZ _t0 E0B0B0B;
+ LOAD _t0 ['INTEGER_CONST', 1];
+ ASSIGNPLUS val _t0;
+ LABEL C0B0B0B;
+ LOAD _t0 ['INTEGER_CONST', 1];
+ ASSIGNPLUS j _t0;
+ JUMPBLOCK 0B0B0B;
+ LABEL E0B0B0B;
+ */

@@ -1,15 +1,9 @@
 import math
 
+from definitions import ParserException
 from src.ASTnodes import *
 from src.LexNames import LexName
 from src.lexer import Token, Pos
-
-
-class ParserException(Exception):
-    def __init__(self,*args):
-        super().__init__(args)
-
-
 
 class Parser:
     __fixingRange = 1

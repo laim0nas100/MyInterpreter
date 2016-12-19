@@ -1,15 +1,3 @@
-###############################################################################
-#                                                                             #
-#  LEXER                                                                      #
-#                                                                             #
-###############################################################################
-
-# Token types
-#
-# EOF (end-of-file) token is used to indicate that
-# there is no more input left for lexical analysis
-import re
-
 from src.LexNames import LexName
 from src.lib import ArrayList, stringReplace
 
@@ -74,8 +62,8 @@ class Token(object):
 
 
 
-    def __init__(self, type, value,pos:Pos=None):
-        self.type = type
+    def __init__(self, tp:str, value,pos:Pos=None):
+        self.type = tp
         self.value = value
         self.position = pos
 

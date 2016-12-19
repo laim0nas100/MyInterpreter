@@ -1,3 +1,4 @@
+from src.LexNames import LexName
 from src.lexer import Token
 from src.lib import ArrayList
 
@@ -9,14 +10,10 @@ def wrapxml(string,end=False)-> str:
     s+=str(string)+">"
     return s+"\n"
 
-
 class AST:
-    globalIndex = 0
     className = "AST"
     def __init__(self):
         self.isEmpty = False
-        self.number = AST.globalIndex
-        AST.globalIndex+=1
 
     def isEmpty(self):
         return self.isEmpty
@@ -81,20 +78,20 @@ class Root(Block):
 class Type(AST):
     className = "Type"
 
-    def __init__(self, tp, isArray=False):
+    def __init__(self, tp:str, isArray=False):
         super().__init__()
-        self.type = tp
+        self.tp = tp
         self.isArray = isArray
 
     def __str__(self):
-        s = str(self.type)
+        s = str(self.tp)
         if self.isArray:
             s+="[]"
         return s
 
     def xml(self,ob=className):
         s = self.toxml(ob)
-        s+= str(self.type)
+        s+= str(self.tp)
         if self.isArray:
             s+="[]"
         s+= "\n"+self.toxml(ob,True)
@@ -108,7 +105,7 @@ class VariableDeclaration(Type):
         self.name = name
 
     def __str__(self):
-        s = str(self.type)
+        s = str(self.tp)
         if self.isArray:
             s += "[]"
         return s + " "+str(self.name)
@@ -128,7 +125,7 @@ class VariableInitialization(VariableDeclaration):
         self.value = value
 
     def __str__(self):
-        s = str(self.type)
+        s = str(self.tp)
         if self.isArray:
             s += "[]"
         return s + " "+str(self.name)+" = "+str(self.value)
@@ -186,7 +183,7 @@ class FunctionDeclaration(VariableDeclaration):
 class FnParameter(VariableDeclaration):
     className = "FnParameter"
 
-    def __init__(self, tp, name, isArray=False):
+    def __init__(self, tp:Token, name, isArray=False):
         super().__init__(tp,name)
         self.name = name
         self.isArray = isArray
@@ -252,6 +249,7 @@ class EXP(AST):
     className = "EXP"
     def __init__(self):
         super().__init__()
+        self.negation = False
 
     def toxml(self,ob = None, end = False)->str:
         if ob is not None:
@@ -378,6 +376,10 @@ class Null(Literall):
     def xml(self,ob=className):
         return self.toxml(ob)+str(self.token.value)+self.toxml(ob,True)
 
+    @staticmethod
+    def create():
+        return Null(Token(LexName.NULL,None))
+
 class BinaryOperator(EXP):
 
     className = "BinaryOperator"
@@ -415,7 +417,13 @@ class ValueCall(EXP):
         self.name = name
 
     def xml(self,ob=className):
-        return self.toxml(ob)+str(self.name)+self.toxml(ob,True)
+        s = ""
+        if self.negation:
+            s += self.toxml("NOT")
+        s+=self.toxml(ob)+str(self.name)+self.toxml(ob,True)
+        if self.negation:
+            s += self.toxml("NOT",True)
+        return s
 
 class VariableAssign(ValueCall):
     className = "VariableAssign"

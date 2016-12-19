@@ -14,3 +14,13 @@ a.append(2)
 a.append(3)
 a.extendAt([0,1],0)
 print(a)
+
+
+stack = list()
+stack.append(0)
+stack.append(1)
+stack.append(2)
+print(stack.pop())
+print(stack.pop())
+
+print("ab">"ba")
