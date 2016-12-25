@@ -7,18 +7,37 @@ Children[0]
 <FunctionDeclaration>
 <VariableDeclaration>
 <Type>
-INT
+INT[]
 </Type>
-name =fun</VariableDeclaration>
+name =makeArray</VariableDeclaration>
 <FnParameter>
 <VariableDeclaration>
 <Type>
 INT
 </Type>
-name =a</VariableDeclaration>
+name =size</VariableDeclaration>
 </FnParameter>
 <Block>
 Label 0B0B
+Number 0
+Parents[0]
+Children[0]
+<Statement>
+<FunctionDeclaration>
+<VariableDeclaration>
+<Type>
+INT
+</Type>
+name =double</VariableDeclaration>
+<FnParameter>
+<VariableDeclaration>
+<Type>
+INT
+</Type>
+name =i</VariableDeclaration>
+</FnParameter>
+<Block>
+Label 0B0B0B
 Number 0
 Parents[0]
 Children[]
@@ -26,8 +45,8 @@ Children[]
 <ReturnStatement>
 <BinaryOperator>
 <ValueCall>
-a</ValueCall>
-PLUS<Int_Const>
+i</ValueCall>
+MULTIPLY<Int_Const>
 2</Int_Const>
 </BinaryOperator>
 </ReturnStatement>
@@ -36,48 +55,94 @@ PLUS<Int_Const>
 </FunctionDeclaration>
 </Statement>
 <Statement>
-<VariableInitialization>
+<ArrayDeclaration>
 <VariableDeclaration>
 <Type>
 INT
 </Type>
-name =val</VariableDeclaration>
-value=<Int_Const>
-0</Int_Const>
-</VariableInitialization>
-</Statement>
-<Statement>
-<VariableInitialization>
-<VariableDeclaration>
-<Type>
-INT
-</Type>
-name =i</VariableDeclaration>
-value=<Int_Const>
-0</Int_Const>
-</VariableInitialization>
-</Statement>
-<Statement>
-<VariableInitialization>
-<VariableDeclaration>
-<Type>
-INT
-</Type>
-name =j</VariableDeclaration>
-value=<FunctionCall>
+name =array</VariableDeclaration>
+size=<FunctionCall>
 <ValueCall>
-fun</ValueCall>
+double</ValueCall>
 <Arguments>
 <Arg>
-<Int_Const>
-1</Int_Const>
-</Arg>
-<Arg>
-<Int_Const>
-1</Int_Const>
+<ValueCall>
+size</ValueCall>
 </Arg>
 </Arguments>
 </FunctionCall>
-</VariableInitialization>
+
+</ArrayDeclaration>
+</Statement>
+<Statement>
+<ReturnStatement>
+<ValueCall>
+array</ValueCall>
+</ReturnStatement>
+</Statement>
+<Statement>
+<ArrayDeclaration>
+<VariableDeclaration>
+<Type>
+INT
+</Type>
+name =ar</VariableDeclaration>
+size=<BinaryOperator>
+<ValueCall>
+size</ValueCall>
+MULTIPLY<Int_Const>
+2</Int_Const>
+</BinaryOperator>
+
+</ArrayDeclaration>
+</Statement>
+<Statement>
+<ReturnStatement>
+<ValueCall>
+ar</ValueCall>
+</ReturnStatement>
+</Statement>
+</Block>
+</FunctionDeclaration>
+</Statement>
+<Statement>
+<ArrayDeclaration>
+<VariableDeclaration>
+<Type>
+INT
+</Type>
+name =array</VariableDeclaration>
+size=<Int_Const>
+3</Int_Const>
+
+</ArrayDeclaration>
+</Statement>
+<Statement>
+<VariableAssign>
+<ValueCall>
+array</ValueCall>
+<FunctionCall>
+<ValueCall>
+makeArray</ValueCall>
+<Arguments>
+<Arg>
+<Int_Const>
+30</Int_Const>
+</Arg>
+</Arguments>
+</FunctionCall>
+</VariableAssign>
+</Statement>
+<Statement>
+<FunctionCall>
+<ValueCall>
+makeArray</ValueCall>
+<Arguments>
+<Arg>
+<Int_Const>
+10</Int_Const>
+</Arg>
+</Arguments>
+</FunctionCall>
 </Statement>
 </Root>

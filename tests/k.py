@@ -1,3 +1,4 @@
+from src.TAC import TAC, Tnames
 from src.lib import OrderedMap, ArrayList
 
 m = OrderedMap()
@@ -24,3 +25,6 @@ print(stack.pop())
 print(stack.pop())
 
 print("ab">"ba")
+
+t = TAC(Tnames.LOAD,"_t0",['INTEGER_CONST', 10])
+print(t.__copy__())

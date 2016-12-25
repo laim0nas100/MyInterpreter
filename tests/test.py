@@ -19,8 +19,12 @@ for k in TACgen.getTabbedStatements(t.getOrderedListOfStatements(t.rootLabel)):
 for label in t.scopes.keyOrder:
     print(t.scopes.get(label).getBlockInfo())
 
+
 i = Interpreter(t.scopes)
-i.interpretBlock(t.rootLabel)
+i.interpretBlockNew(t.rootLabel)
 print("\n\n\n\n")
-for s in i.scopes.returnItemsInOrder():
+for s in i.usedStackValues:
     print(s.getBlockInfo())
+
+
+print("End.")

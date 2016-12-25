@@ -1,4 +1,57 @@
 
+def int[] makeArray(int size){
+    def int double(int i){
+        return i*2;
+    }
+    int[double(size)] array;
+    return array;
+    int[size*2] ar;
+    return ar;
+}
+
+
+int[3] array;
+array = makeArray(30);
+makeArray(10);
+/*
+def int rec(int i){
+    if (i>10){
+        return i;
+    }else{
+        return rec(i*2);
+    }
+}
+def int f(int i,int j){
+
+    def int r(int r){
+        return r*2;
+    }
+    return r(i)+r(j);
+}
+def string ok(){
+    return "OK";
+}
+*/
+//int a = rec(3);
+
+//int b = f(3,1);
+/*
+
+int val = 0;
+int b;
+
+b = f(2,2) + f(3,3) + f(4,4);//12
+string s = ok() + ok() + ok();
+*/
+/*
+for(int i=0; i<10; i+=1;){
+    for(int j =0; j<10; j+=1;){
+
+        array[j] = val;
+        val+=1;
+    }
+}
+*/
 //int a = 10+"1000";
 //b = a + b * 3 - (c +5);
 //int a = ((11*a + (21-2)) / a[0+1]);
@@ -13,7 +66,7 @@ for(int i =0; i>0; i-=1;){
 o=0;
 }
 
-*/
+
 //int[10] array;
 //array[1] = ar[2] + ar[10];
 /*
@@ -65,10 +118,10 @@ for(int i=0; true; i+=1;){
 def int[] initArray(){
     return int[10] ar;
 }
-*/
 def int fun(int a){
     return a+2;
 }
-int val = 0;
-int i = 0;
-int j = fun(1,1);
+int val = null;
+int i = 1;
+
+*/

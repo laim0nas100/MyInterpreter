@@ -34,18 +34,23 @@ class TVariable:
         if input(self.value,float):
             if math.ceil(self.value) == math.floor(self.value):
                 return not (math.ceil(self.value) == 0)
-
         return True
 
-
-class TFunction(TVariable):
-    def __init__(self, t: list, name, parameters: list):
-        super().__init__(t, name)
+class TFunction():
+    def __init__(self, t: list, name,label, parameters: list):
+        self.t = t[0]
+        self.isArray = t[1]
+        self.name = name
+        self.label = label
         self.parameters = []
         for p in parameters:
             self.parameters.append(p.tp)
 
-
+    def tp(self):
+        string = str(self.t)
+        if self.isArray:
+            string += "[]"
+        return string
 
 class Reg:
     def __init__(self,name):
@@ -54,7 +59,7 @@ class Reg:
         self.value = None
 
     def __str__(self):
-        return self.name +" "+ str(self.t) +" "+ str(self.value)
+        return self.name +":"+ str(self.t) +" "+ str(self.value)
 
     def toTVariable(self):
         isArray = isinstance(self.value,list)
@@ -106,7 +111,8 @@ class Scope:
         self.variables = OrderedMap()
         self.functions = OrderedMap()
         self.functionName = None
-        self.index = 0
+        self.returnIndex = 0
+        self.registers = OrderedMap()
 
     def getExitLabel(self):
         return "E"+self.label
@@ -116,10 +122,13 @@ class Scope:
         return self.label[1 + indexOfB:]
 
     def getBlockInfo(self):
-        string = "Block ["+self.label+"]\n"
+        string = "Block ["+self.label+"]"
+        if self.functionName:
+            string+=self.functionName
+        string+="\n"
         string += "functions:"
         for f in self.functions.values():
-            string+= "\n"+f.t.__str__() + " def "+f.name+" "
+            string+= "\n"+f.t.__str__() + " "+f.name+" "+f.label+" "
             for p in f.parameters:
                 string+=p.__str__()+" "
         string+="\nvars:"
@@ -128,12 +137,59 @@ class Scope:
         string+="\n### END ###"
         return string
 
+    def __str__(self):
+        return self.label
+
+class Tnames:
+    LOAD = "LOAD" #loads to register following value
+    JUMP = "JUMP" #jumps within all scopes
+    JUMPZ = "JUMPZ" #jump if operand is zero to label {x, label}
+   # JUMPBLOCK = "JUMPBLOCK" #jump within scope
+    LOADARR = "LOADARR" #loads to register x from [array, index]
+    LABEL = "LABEL" #creates new label
+    INIT = "INIT" #initialises new variable {type,value,name}
+    INITARR = "INITARR" #initialises new array {size, [type,name]}
+    CALLBLOCK = "CALLBLOCK" #jumps to block
+    POP = "POP" #pops to register following value
+    PUSH = "PUSH" #pushes to register the following value
+    RETURN = "RETURN"
+    ENDBLOCK = "ENDBLOCK" #does nothing, marks end of a block
+    CALL = "CALL" #call a function
+
+class TAC:
+    def __init__(self,operation,operand0,operand1=None):
+        if operand1 is None:
+            self.tuple = [operation, operand0]
+        else:
+            self.tuple = [operation,operand0,operand1]
+        self.operation = operation
+
+    def __str__(self):
+        s = ""
+        for t in self.tuple:
+            s += " "+t.__str__()
+        return s+";"
+
+    def __copy__(self):
+        l = self.tuple.__len__()
+        if l == 3:
+            newTAC = TAC(self.operation,"","")
+        else:
+            newTAC = TAC(self.operation, "", None)
+        i = 0
+        for t in self.tuple:
+            if isinstance(t,list):
+                newTAC.tuple[i] = t.copy()
+            else:
+                newTAC.tuple[i] = t
+            i+=1
+        return newTAC
 
 class Operation:
     @staticmethod
     def copyValue(original: TVariable)->TVariable:
         var = TVariable([original.t, original.isArray], original.name)
-        var.t = original.t()
+        var.t = original.t
         if isinstance(original.value, StaticArray):
             var.value = StaticArray(original.value.size,original.value.t)
             for i in range(0,original.value.size):
@@ -142,6 +198,27 @@ class Operation:
             var.value = original.value
         return var
 
+    @staticmethod
+    def copyFunction(original: TFunction) ->TFunction:
+        tf= TFunction([original.t,original.isArray],original.name,original.label,[])
+        tf.parameters = original.parameters.copy()
+        return tf
+
+    @staticmethod
+    def generateScope(self:Scope,appendToLabel = ""):
+        newScope = Scope(self.label+appendToLabel)
+
+        for func in self.functions.returnItemsInOrder():
+            newScope.functions.put(func.name,Operation.copyFunction(func))
+        for var in self.variables.returnItemsInOrder():
+            newScope.variables.put(var.name,Operation.copyValue(var))
+        for st in self.statements:
+            s = st.__copy__()
+            if s.tuple[0] == Tnames.LABEL:
+                s.tuple[1]+=appendToLabel
+            newScope.statements.append(s)
+        newScope.functionName = self.functionName
+        return newScope
 
 
     _plus =[
@@ -170,7 +247,15 @@ class Operation:
         [LexName.INT, LexName.NULL],
         [LexName.FLOAT, LexName.NULL],
         [LexName.STRING, LexName.NULL],
-        [LexName.BOOL, LexName.NULL]
+        [LexName.BOOL, LexName.NULL],
+        [LexName.INT + "[]", LexName.INT + "[]"],
+        [LexName.FLOAT + "[]", LexName.FLOAT + "[]"],
+        [LexName.STRING + "[]", LexName.STRING + "[]"],
+        [LexName.BOOL + "[]", LexName.BOOL + "[]"],
+        [LexName.INT + "[]", LexName.NULL],
+        [LexName.FLOAT + "[]", LexName.NULL],
+        [LexName.STRING + "[]", LexName.NULL],
+        [LexName.BOOL + "[]", LexName.NULL]
     ]
 
     _equal = [
@@ -182,7 +267,11 @@ class Operation:
         [LexName.INT, LexName.NULL],
         [LexName.FLOAT, LexName.NULL],
         [LexName.STRING, LexName.NULL],
-        [LexName.BOOL, LexName.NULL]
+        [LexName.BOOL, LexName.NULL],
+        [LexName.INT + "[]", LexName.NULL],
+        [LexName.FLOAT + "[]", LexName.NULL],
+        [LexName.STRING + "[]", LexName.NULL],
+        [LexName.BOOL + "[]", LexName.NULL]
     ]
     _logic = [
         [LexName.BOOL, LexName.BOOL],

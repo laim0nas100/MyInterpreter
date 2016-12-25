@@ -1,44 +1,11 @@
 from definitions import SemanticException
 from src.ASTnodes import *
 from src.LexNames import LexName
-from src.SpecificTypes import Scope, TVariable
+from src.SpecificTypes import Scope, TVariable, TAC, Tnames
 from src.SpecificTypes import TFunction
 from src.lib import ArrayList, OrderedMap
 
 
-class Tnames:
-    LOAD = "LOAD" #loads to register following value
-    JUMP = "JUMP" #jumps within all scopes
-    JUMPZ = "JUMPZ" #jump if operand is zero to label {x, label}
-   # JUMPBLOCK = "JUMPBLOCK" #jump within scope
-    LOADARR = "LOADARR" #loads to register x from [array, index]
-    LABEL = "LABEL" #creates new label
-    INIT = "INIT" #initialises new variable {type,value,name}
-    INITARR = "INITARR" #initialises new array {size, [type,name]}
-    CALLBLOCK = "CALLBLOCK" #jumps to block
-    POP = "POP" #pops to register following value
-    PUSH = "PUSH" #pushes to register the following value
-    RETURN = "RETURN"
-    #ENDBLOCK = "ENDBLOCK" #end parsing of a block
-    CALL = "CALL" #call a function
-
-
-
-
-
-class TAC:
-    def __init__(self,operation,operand0,operand1=None):
-        if operand1 is None:
-            self.tuple = [operation, operand0]
-        else:
-            self.tuple = [operation,operand0,operand1]
-        self.operation = operation
-
-    def __str__(self):
-        s = ""
-        for t in self.tuple:
-            s += " "+t.__str__()
-        return s+";"
 
 
 
@@ -46,8 +13,7 @@ class TAC:
 
 
 
-def makeTmp(index:int):
-    return "_t"+str(index)
+
 
 class TACgen:
     def __init__(self):
@@ -56,21 +22,29 @@ class TACgen:
         self.currentBlock = None
         self.continueLabel = None
         self.breakLabel = None
-        self.functionReturnTo = None
         self.rootLabel = "0B"
+        self.functionStack = ""
+        self.currentFunction = ArrayList(None,None)
+        self.currentFunctionName = ArrayList(None,None)
 
+    def makeTmp(self,index: int):
+        return "_r" + str(index)
+    
     def nameIsDefined(self,startingLabel:str,name:str,function=False,checkOnlyLocal=False):
 
         childScope = self.scopes.get(startingLabel)
         if checkOnlyLocal:
-            return childScope.variables.containsKey(name)
+            if function is True:
+                return childScope.functions.containsKey(name)
+            else:
+                return childScope.variables.containsKey(name)
         if childScope is not None:
 
             if function is True:
                 if childScope.functions.containsKey(name):
                     return True
                 else:
-                    return self.nameIsDefined(childScope.getParentLabel(),name,function)
+                    return self.nameIsDefined(childScope.getParentLabel(),name,True)
             else:
                 if childScope.variables.containsKey(name):
                     return True
@@ -149,8 +123,8 @@ class TACgen:
 
     def parseRoot(self,block:Root):
         scope = Scope(block.label)
-        scope.functions.put("print",TFunction([LexName.NULL,False], "print", []))
-        scope.functions.put("input",TFunction([LexName.STRING,False], "input", []))
+        scope.functions.put("print",TFunction([LexName.NULL,False], "print","0B", []))
+        scope.functions.put("input",TFunction([LexName.STRING,False], "input","0B", []))
         self.scopes.put(block.label,scope)
         self.parseBlock(block)
 
@@ -162,12 +136,12 @@ class TACgen:
         else:
             self.scopes.put(scope.label,scope)
         if putLabel:
-            scope.statements.append(self.generateLabel(scope.label))
+            scope.statements.append(TAC(Tnames.LABEL,scope.label))
         for st in block.statements:
             self.currentBlockLabel = scope.label
             scope.statements.extend(self.parseStatement(st))
         if putLabel:
-            scope.statements.append(self.generateLabel(block.exitLabel()))
+            scope.statements.append(TAC(Tnames.LABEL,block.exitLabel()))
         self.scopes.put(scope.label, scope)
 
     def parseStatement(self,statement:Statement):
@@ -183,10 +157,12 @@ class TACgen:
                     statements.extend(self.parseArrayElementAssign(node))
                 else:
                     statements.extend(self.untangleExpression(node.value))
-                    statements.append(TAC(node.operator.type,node.name,makeTmp(0)))
+                    statements.append(TAC(node.operator.type, node.name, self.makeTmp(0)))
             elif isinstance(node,VariableDeclaration):
                 if isinstance(node, FunctionDeclaration):
+                    label = scope.label
                     self.parseDefineFunction(node)
+                    self.updateCurrentBlock(label)
                 else:
 
 
@@ -196,14 +172,14 @@ class TACgen:
                         else:
                             scope.variables.put(node.name, TVariable([node.tp, False], node.name))
                         statements.extend(self.untangleExpression(node.value))
-                        statements.append(self.generateInit(node,makeTmp(0)))
+                        statements.append(TAC(Tnames.INIT,node,self.makeTmp(0)))
                     elif isinstance(node,ArrayDeclaration):
                         if self.nameIsDefined(scope.label, node.name, checkOnlyLocal=True):
                             raise SemanticException(node.name + " Is allready defined in this scope")
                         else:
                             scope.variables.put(node.name, TVariable([node.tp, True], node.name))
                         statements.extend(self.untangleExpression(node.size))
-                        statements.append(self.generateInitArr(makeTmp(0), [node.tp, node.name]))
+                        statements.append(TAC(Tnames.INITARR,self.makeTmp(0), [node.tp, node.name]))
                     else:
                         statements.append(TAC(Tnames.INIT,node.name, Null(Token(LexName.NULL,None))))
             elif isinstance(node,WhileLoop):
@@ -217,8 +193,8 @@ class TACgen:
                 self.parseBlock(node)
             elif isinstance(node,ReturnStatement):
                 statements.extend(self.untangleExpression(node.node))
-                statements.append(TAC(Tnames.PUSH,makeTmp(0)))
-                statements.append(TAC(Tnames.RETURN,self.currentBlockLabel))
+                statements.append(TAC(Tnames.PUSH,self.makeTmp(0)))
+                statements.append(TAC(Tnames.RETURN,self.currentFunction.getLast(),self.currentFunctionName.getLast()))
             elif isinstance(node,BreakStatement):
                 if self.breakLabel is not None:
                     statements.append(TAC(Tnames.JUMP,self.breakLabel))
@@ -236,39 +212,49 @@ class TACgen:
 
         functionScope = Scope(node.body.label)
         functionScope.functionName = node.name
-        function = TFunction([node.tp,node.isArray], node.name, node.parameters)
+        function = TFunction([node.tp,node.isArray], node.name,node.body.label, node.parameters)
         self.scopes.put(functionScope.label, functionScope)
-        self.updateCurrentBlock(functionScope.label)
-        for p in node.parameters:
-            if self.nameIsDefined(functionScope.label, p.name, checkOnlyLocal=False):
-                raise SemanticException(node.name + " Is allready defined in "+ functionScope.label+" scope")
-            else:
-                functionScope.variables.put(p.name, TVariable([p.tp, p.isArray], p.name))
-        self.updateCurrentBlock(functionScope.getParentLabel())
-
-        self.parseBlock(node.body)
-        #popping variables from stack
-        for p in node.parameters:
-            functionScope.statements.insert(1,TAC("POP", makeTmp(0)))
-            functionScope.statements.insert(2, TAC(Tnames.LOAD, p.name, makeTmp(0)))
-
-        if self.nameIsDefined(functionScope.label,functionScope.functionName,True):
+        # self.updateCurrentBlock(functionScope.label)
+        if self.nameIsDefined(functionScope.label,functionScope.functionName,function=True):
             raise SemanticException("Function name "+functionScope.functionName+" allready defined" )
         else:
 
             parentScope = self.scopes.get(functionScope.getParentLabel())
             parentScope.functions.put(functionScope.functionName,function)
+            functionScope.functions.put(functionScope.functionName,function)
             #parentScope.statements.append(TAC(Tnames.,functionScope.label))
+
+        for p in node.parameters:
+            if self.nameIsDefined(functionScope.label, p.name, checkOnlyLocal=True):
+                raise SemanticException(p.name + " Is allready defined in "+ functionScope.label+" scope")
+            else:
+                functionScope.variables.put(p.name, TVariable([p.tp, p.isArray], p.name))
+        self.updateCurrentBlock(functionScope.getParentLabel())
+        self.functionStack += "f"
+        self.currentFunction.append(functionScope.label)
+        self.currentFunctionName.append(functionScope.functionName)
+        self.parseBlock(node.body)
+
+        #popping variables from stack
+        for p in node.parameters:
+            functionScope.statements.insert(1,TAC("POP", self.makeTmp(0)))
+            functionScope.statements.insert(2, TAC(LexName.ASSIGN, p.name, self.makeTmp(0)))
+        functionScope.statements.append(TAC(Tnames.LOAD,self.makeTmp(0),[LexName.NULL,""]))
+        functionScope.statements.append(TAC(Tnames.PUSH, self.makeTmp(0)))
+        functionScope.statements.append(TAC(Tnames.RETURN, self.currentFunction.getLast(),self.currentFunctionName.getLast()))
+        self.currentFunction.pop()
+        self.currentFunctionName.pop()
+        self.functionStack = self.functionStack[:-1]
 
     def parseArrayElementAssign(self,node:ArrayElementAssign):
         statements = []
         statements.extend(self.untangleExpression(node.value))
-        statements.append(TAC(Tnames.PUSH, makeTmp(0)))
+        statements.append(TAC(Tnames.PUSH, self.makeTmp(0)))
         #_t1 = index, _t0 = value
         statements.extend(self.untangleExpression(node.index))
-        statements.append(self.generateLoad(makeTmp(1),makeTmp(0)))
-        statements.append(TAC(Tnames.POP,makeTmp(0)))
-        statements.append(TAC(node.operator.type,[node.name,makeTmp(1)],makeTmp(0)))
+        statements.append(TAC(Tnames.LOAD,self.makeTmp(1),self.makeTmp(0)))
+        statements.append(TAC(Tnames.POP,self.makeTmp(0)))
+        statements.append(TAC(node.operator.type,[node.name,self.makeTmp(1)],self.makeTmp(0)))
         return statements
 
     def parseFor(self,loop:ForLoop):
@@ -298,14 +284,14 @@ class TACgen:
         self.breakLabel = exitLabel
         self.parseBlock(loop.node,False)
         scope = self.scopes.get(label)
-        stats.append(self.generateLabel(label))
+        stats.append(TAC(Tnames.LABEL,label))
         if addContinue:
             stats.append(TAC(Tnames.LABEL,continueLabel))
         stats.extend(self.untangleExpression(loop.condition))
-        stats.append(self.generateJumpZ(makeTmp(0),exitLabel))
+        stats.append(TAC(Tnames.JUMPZ,self.makeTmp(0),exitLabel))
         stats.extend(scope.statements)
         stats.append(TAC(Tnames.JUMP,label))
-        stats.append(self.generateLabel(exitLabel))
+        stats.append(TAC(Tnames.LABEL,exitLabel))
         scope.statements = stats
         #self.scopes.put(scope.label,scope)
         self.breakLabel = None
@@ -316,15 +302,17 @@ class TACgen:
 
         for i in range(0,st.condition.__len__()):
             statements = []
-            notLabel = st.blocks[i].exitLabel()
+            notLabel = "N"+st.blocks[i].label
             self.parseBlock(st.blocks[i])
             statements.extend(self.untangleExpression(st.condition[i]))
-            statements.append(TAC(Tnames.JUMPZ,makeTmp(0),notLabel))
+            statements.append(TAC(Tnames.JUMPZ,self.makeTmp(0),notLabel))
+
             scope = self.scopes.get(st.blocks[i].label)
             scope.statements.extendAt(statements,0)
-            scope.statements.insert(-1,TAC(Tnames.ENDBLOCK,st.blocks[i].label))
+            scope.statements.insert(-1,TAC(Tnames.JUMP,st.blocks[i].exitLabel()))
+            scope.statements.insert(-1,TAC(Tnames.LABEL,notLabel))
             try:
-                scope.statements.append(TAC(Tnames.CALLBLOCK,st.blocks[i+1].label))
+                scope.statements.insert(-1,TAC(Tnames.CALLBLOCK,st.blocks[i+1].label))
             except Exception:
                 pass
 
@@ -342,59 +330,42 @@ class TACgen:
                     statements.append(self.generateArithmetic(exp.op.type,index,index+1))
 
                 if isinstance(exp, Literall):
-                    statements.append(self.generateLoad(makeTmp(index),[exp.token.type, exp.token.value]))
+                    statements.append(TAC(Tnames.LOAD,self.makeTmp(index),[exp.token.type, exp.token.value]))
             if isinstance(exp,ValueCall):
                 if isinstance(exp, FunctionCall):
-                    if not self.nameIsDefined(self.currentBlockLabel,exp.name,True):
-                        raise SemanticException("Function "+exp.name+" is not defined")
+                    if not self.nameIsDefined(self.currentBlockLabel,exp.name,function=True,checkOnlyLocal=False):
+                        raise SemanticException("Function "+exp.name+" is not defined in " + self.currentBlockLabel)
                     for par in exp.parameters:
                         statements.extend(self.untangleExpression(par,index))
-                        statements.append(TAC(Tnames.PUSH,makeTmp(index)))
+                        statements.append(TAC(Tnames.PUSH,self.makeTmp(index)))
                     amount = exp.parameters.__len__()
-                    statements.append(TAC(Tnames.LOAD,makeTmp(index),[LexName.INTEGER_CONST,amount]))
-                    statements.append(TAC(Tnames.PUSH,makeTmp(index)))
+                    statements.append(TAC(Tnames.LOAD,self.makeTmp(index),[LexName.INTEGER_CONST,amount]))
+                    statements.append(TAC(Tnames.PUSH,self.makeTmp(index)))
                     statements.append(TAC(Tnames.CALL,exp.name))
-                    statements.append(TAC(Tnames.POP,makeTmp(index)))
+                    statements.append(TAC(Tnames.POP,self.makeTmp(index)))
                 elif isinstance(exp, ArrayCall):
                     if not self.nameIsDefined(self.currentBlockLabel,exp.name,False):
                         raise SemanticException("Array "+exp.name+" is not defined")
                     # print("Found ArrayCall")
                     untangleExp(exp.index,index+1)
-                    statements.append(TAC(Tnames.LOADARR,makeTmp(index),[exp.name,makeTmp(index+1)]))
+                    statements.append(TAC(Tnames.LOADARR,self.makeTmp(index),[exp.name,self.makeTmp(index+1)]))
                 else:
                     if not self.nameIsDefined(self.currentBlockLabel,exp.name,False):
                         raise SemanticException("Variable "+exp.name+" is not defined")
-                    statements.append(self.generateLoad(makeTmp(index),exp.name))
+                    statements.append(TAC(Tnames.LOAD,self.makeTmp(index),exp.name))
             if exp.negation:
-                statements.append(TAC(LexName.NOT,makeTmp(index)))
+                statements.append(TAC(LexName.NOT,self.makeTmp(index)))
 
 
         untangleExp(exp,index)
         return statements
 
-    def generateInit(self,dest:VariableDeclaration,src)->TAC:
-        return TAC(Tnames.INIT, [dest.tp, dest.name], src)
-
-    def generateInitArr(self,dest,typeAndSize:list)->TAC:
-        return TAC(Tnames.INITARR,dest,typeAndSize)
-
     def generateArithmetic(self,operation,reg1:int,reg2:int)->TAC:
-        return TAC(operation,makeTmp(reg1),makeTmp(reg2))
+        return TAC(operation,self.makeTmp(reg1),self.makeTmp(reg2))
 
-    def generateLoad(self,dest,src)->TAC:
-        return TAC(Tnames.LOAD,dest,src)
 
-    def generateLoadArray(self,dest,src:ArrayCall)->TAC:
-        return TAC(Tnames.LOADARR,dest,src.name)
 
-    def generateLabel(self,name)->TAC:
-        return TAC(Tnames.LABEL,name)
 
-    def generateJumpZ(self,oper,label)->TAC:
-        return TAC(Tnames.JUMPZ,oper,label)
-
-    def generateJump(self,label)->TAC:
-        return TAC(Tnames.JUMP,label)
 
 
 

@@ -78,6 +78,37 @@ class ArrayList(list):
         else:
             self[startAt:startAt] = iterable
 
+    def getLast(self):
+        if self.__len__()==0:
+            return None
+        return self[self.__len__()-1]
+
+    def size(self):
+        return self.__len__()
+
+
+    def getItemsInReverseOrder(self):
+        index = self.__len__()
+        items = []
+        if index == 0:
+            return items
+        while index>0:
+            index -= 1
+            items.append(self[index])
+
+        return items
+
+    def __str__(self):
+        string = "["
+        for st in self:
+            string+=str(st)+","
+        string = string[:-1]+"]"
+        return string
+
+
+
+
+
 
 class Table:
     def __init__(self, data=None):

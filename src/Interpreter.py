@@ -1,7 +1,7 @@
 
 from definitions import *
 from src.LexNames import LexName
-from src.SpecificTypes import Scope, Reg, StaticArray, TVariable, Operation
+from src.SpecificTypes import Scope, Reg, StaticArray, TVariable, Operation, TFunction
 
 from src.TAC import TAC, Tnames
 from src.lexer import Token, Lexer
@@ -13,7 +13,7 @@ from src.parser import Parser
 
 class Interpreter(object):
 
-
+    builtInFunctions = ['input','print']
     @staticmethod
     def prepateAST(file):
         print("Lexer start")
@@ -61,8 +61,9 @@ class Interpreter(object):
         self.stack = ArrayList(None,None)
         self.registers = OrderedMap()
         self.currentBlock = Scope("0B")
-        self.lastBlock = Scope("0B")
         self.rootLabel = "0B"
+        self.callStack = ArrayList(None,None)
+        self.usedStackValues = ArrayList(None,None)
 
     def stringRegisters(self):
         string = ""
@@ -71,11 +72,13 @@ class Interpreter(object):
         return string
 
     def setOrGetRegister(self,regName):
-        if self.registers.containsKey(regName):
-            return self.registers.get(regName)
+        scope = self.callStack.getLast()
+        if scope.registers.containsKey(regName):
+            return scope.registers.get(regName)
         else:
-            self.registers.put(regName,Reg(regName))
-            return self.registers.get(regName)
+            scope.registers.put(regName,Reg(regName))
+            return scope.registers.get(regName)
+
 
 
 
@@ -92,79 +95,150 @@ class Interpreter(object):
             return LexName.BOOL
         return t
 
-    def fetchValue(self,scope:Scope,name:str)->TVariable:
-        if scope.variables.containsKey(name):
-            return scope.variables.get(name)
+    def fetchValue(self,name:str)->TVariable:
+        for scope in self.callStack.getItemsInReverseOrder():
+            if scope.variables.containsKey(name):
+                return scope.variables.get(name)
+        raise SemanticException("Value "+name+" was not found")
+
+    def fetchFunction(self,name:str)->TFunction:
+        for scope in self.callStack.getItemsInReverseOrder():
+            if scope.functions.containsKey(name):
+                return scope.functions.get(name)
+        raise SemanticException("Function "+name+" was not found")
+
+    def generateScope(self,startingLabel)->Scope:
+        return Operation.generateScope(self.scopes.get(startingLabel),"")
+
+    def doFunction(self,startingLabel,functionName)->Scope:
+        if functionName in Interpreter.builtInFunctions:
+            raise Exception("Not yet")
         else:
-            return self.fetchValue(self.scopes.get(scope.getParentLabel()),name)
+
+            for scope in self.scopes.returnItemsInOrder():
+                if scope.functions.containsKey(functionName):
+                    fLabel = scope.functions.get(functionName).label
+                    return Operation.generateScope(self.scopes.get(fLabel))
+                if scope.functionName == functionName:
+                    if scope.label in startingLabel:
+                        return Operation.generateScope(self.scopes.get(startingLabel))
+            raise Exception("Failed to call "+functionName +" from "+ startingLabel)
 
 
-    def doJump(self,label):
-        for block in self.scopes.returnItemsInOrder():
+
+
+
+
+    def doJumpNew(self,label):
+        for scope in self.callStack.getItemsInReverseOrder():
             i = 0
-            for st in block.statements:
+            if scope is None:
+                raise SemanticException("No scopes found at "+label)
+            for st in scope.statements:
                 if st.tuple[0] == Tnames.LABEL and st.tuple[1] == label:
-                    return [block.label,i]
+                    return [scope.label,i]
                 i+=1
         raise SemanticException("Failed Jump")
 
-    def interpretBlock(self, label: str):
-        self.currentBlock = self.scopes.get(label)
+    def doReturn(self,label=None)->int:
+        if label is None:
+            self.usedStackValues.append(self.callStack.pop())
+            self.currentBlock = self.callStack.getLast()
+        else:
+            while True:
+                if self.currentBlock.label == label:
+                    self.usedStackValues.append(self.callStack.pop())
+                    self.currentBlock = self.callStack.getLast()
+                    break
+                else:
+                    self.usedStackValues.append(self.callStack.pop())
+                    self.currentBlock = self.callStack.getLast()
+                if self.currentBlock is None:
+                    print("End reached")
+                    return -1
+
+        if self.currentBlock is None:
+            print("End reached")
+            return -1
+
+        print("Call stack:" + str(self.callStack))
+        return self.currentBlock.returnIndex
 
 
-        i = 0
+    def interpretBlockNew(self, label: str):
+        self.callStack.append(self.generateScope(label))
+        self.currentBlock = self.callStack.getLast()
+        print("Call stack:" + str(self.callStack))
+        i = -1
         while True:
-            try:
-                if i >= self.currentBlock.statements.__len__()-1:
-                    try:
-                        #return after CALLBLOCK to previous spot
-                        parentLabel = self.currentBlock.getParentLabel()
-                        prevCalledBlock = self.currentBlock.label
-                        self.currentBlock = self.scopes.get(parentLabel)
-                        j = 0
-                        for st in self.currentBlock.statements:
-                            j += 1
-                            if st.operation==Tnames.CALLBLOCK:
-                                if st.tuple[1] == prevCalledBlock:
-                                    i = j
-                                    break
-
-                    except AttributeError:
-                        return
-            except Exception:
-                break
+            i += 1
+            if i >= self.currentBlock.statements.__len__():
+                # return after CALLBLOCK/CALL to previous spot
+                i = self.doReturn()
+                if i == -1:
+                    break
             #pre-evaluation
+
             st = self.currentBlock.statements[i]
+            string = ""
+            for reg in self.currentBlock.registers.returnItemsInOrder():
+                string+=str(reg)
+            print(str(i).zfill(3)+":",st,string)
             operation = st.operation
             if operation == Tnames.LABEL:
                 pass
             elif operation == Tnames.CALLBLOCK:
-                self.currentBlock = self.scopes.get(st.tuple[1])
+                # self.currentBlock.returnIndex = i
+                self.currentBlock.returnIndex = i
+                scope = Operation.generateScope(self.scopes.get(st.tuple[1]))
+                self.currentBlock = scope
+                self.callStack.append(scope)
+                print("Call stack:"+str(self.callStack))
                 i = -1
             elif operation == Tnames.JUMP:
-                tup = self.doJump(st.tuple[1])
+                tup = self.doJumpNew(st.tuple[1])
                 self.currentBlock = self.scopes.get(tup[0])
                 i = tup[1]
 
 
             elif operation == Tnames.JUMPZ:
-                reg = self.registers.get("_t0")
+                reg = self.setOrGetRegister(st.tuple[1])
                 if not reg.booleanValue():
-                    tup = self.doJump(st.tuple[2])
+                    tup = self.doJumpNew(st.tuple[2])
                     self.currentBlock = self.scopes.get(tup[0])
                     i = tup[1]
 
-            elif st.operation in Tnames.CALL:
-                functionName = st.tuple[1]
+            elif operation == Tnames.CALL:
+                # reg = self.setOrGetRegister("_temp")
+                self.currentBlock.returnIndex = i
+                self.evaluate(TAC(Tnames.POP,"_temp"))
+                reg = self.setOrGetRegister("_temp")
+                if reg.value != self.fetchFunction(st.tuple[1]).parameters.__len__():
+                    raise SemanticException("Function Parameter amount miss-match")
 
-
+                func = self.doFunction(self.callStack.getLast(),st.tuple[1])
+                self.currentBlock = func
+                self.callStack.append(func)
+                print("Call stack:" + str(self.callStack))
+                i = -1
+            elif operation == Tnames.RETURN:
+                fetched = self.fetchFunction(st.tuple[2])
+                val = self.stack.getLast()
+                if val.tp() != fetched.tp():
+                    if val.tp() == LexName.NULL:
+                        raise SemanticException("Function " + st.tuple[2] + " " + "returned nothing")
+                    raise SemanticException("Function "+st.tuple[2]+" "+"returned different type than declared")
+                i = self.doReturn(st.tuple[1])
+                if i == -1:
+                    break
             else:
+                #Non block jumping command
                 self.evaluate(st)
-            i+=1
+
 
 
     def evaluate(self,st:TAC):
-        '''Black hole all in one method for ALL Statements'''
+        '''Black hole "all in one method" for ALL Statements'''
         if st.operation == Tnames.LOAD:
             value = st.tuple[2]
             reg = self.setOrGetRegister(st.tuple[1])
@@ -179,51 +253,50 @@ class Interpreter(object):
                     reg.value = value[0] == LexName.TRUE
                 else:
                     reg.value = value[1]
-            elif "_t" in value:
+            elif "_" in value:
                 # Register call
-                reg1 = self.registers.get(value)
+                reg1 = self.setOrGetRegister(value)
                 reg.t = reg1.t
                 reg.value = reg1.value
             else:
                 #value fetch
                 varName = st.tuple[2]
-                var = self.fetchValue(self.currentBlock,varName)
+                var = self.fetchValue(varName)
                 regName = st.tuple[1]
-                reg = self.registers.get(regName)
-                reg.t = var.tp()
+                reg = self.setOrGetRegister(regName)
+                reg.t = var.t
                 reg.value = var.value
 
         elif st.operation == Tnames.INIT:
             name = st.tuple[1][1] #get the name
             regName = st.tuple[2]
-            reg = self.registers.get(regName)
+            reg = self.setOrGetRegister(regName)
             var = self.currentBlock.variables.get(name)
             var.value = reg.value
             if reg.t == LexName.NULL:
                 var.value = None
-            elif var.t != reg.t and reg.t:
+            elif (var.tp() != reg.tp()) and (reg.tp() is not None):
                 raise SemanticException("Type miss match")
             else:
                 var.t = reg.t
         elif st.operation == Tnames.INITARR:
             regName = st.tuple[1]
-            reg = self.registers.get(regName)
+            reg = self.setOrGetRegister(regName)
             name = st.tuple[2][1]
             t = st.tuple[2][0]
             var = self.currentBlock.variables.get(name)
-            if reg.t != LexName.INT:
+            if reg.tp() != LexName.INT:
                 raise SemanticException("Array size must be INT")
             var.value = StaticArray(reg.value,t)
-
         elif st.operation == Tnames.LOADARR:
             # Load from Array
             regName = st.tuple[1]
             reg = self.registers.get(regName)
             indexRegName = st.tuple[2][1]
-            indexReg = self.registers.get(indexRegName)
+            indexReg = self.setOrGetRegister(indexRegName)
             arrayName = st.tuple[2][0]
-            array = self.fetchValue(self.currentBlock,arrayName)
-            if indexReg.t != LexName.INT:
+            array = self.fetchValue(arrayName)
+            if indexReg.tp() != LexName.INT:
                 raise SemanticException("Array index must be INT")
             else:
                 reg.value = array.value[indexReg.value].value
@@ -231,20 +304,21 @@ class Interpreter(object):
 
         elif st.operation == Tnames.PUSH:
             regName = st.tuple[1]
-            reg = self.registers.get(regName)
+            reg = self.setOrGetRegister(regName)
             self.stack.append(reg.toTVariable())
+
         elif st.operation == Tnames.POP:
             regName = st.tuple[1]
-            reg = self.registers.get(regName)
+            reg = self.setOrGetRegister(regName)
             val = self.stack.pop()
-            reg.t = val.tp()
+            reg.t = val.t
             reg.value = val.value
 
         elif st.operation == LexName.NOT:
             regName = st.tuple[1]
-            reg = self.registers.get(regName)
+            reg = self.setOrGetRegister(regName)
             booleanValue = reg.booleanValue()
-            if reg.t == LexName.BOOL:
+            if reg.tp() == LexName.BOOL:
                 reg.value = not booleanValue
             else:
                 raise SemanticException("Can't invert non-boolean value")
@@ -252,28 +326,28 @@ class Interpreter(object):
             operation = st.operation
             op1 = st.tuple[1]
             op2 = st.tuple[2]
-            src = self.registers.get(op2)
+            src = self.setOrGetRegister(op2)
             dest = None
             if isinstance(op1,list):
             # TODO operation with arrays
-                indexReg = self.registers.get(op1[1])
-                if indexReg.t != LexName.INT:
+                indexReg = self.setOrGetRegister(op1[1])
+                if indexReg.tp() != LexName.INT:
                     raise SemanticException("Array index is not INT")
                 arrayName = op1[0]
-                array = self.fetchValue(self.currentBlock,arrayName).value
+                array = self.fetchValue(arrayName).value
                 dest = array[indexReg.value]
             else:
                 name = op1
-                if "_t" in name:
-                    dest = self.registers.get(name)
+                if "_" in name:
+                    dest = self.setOrGetRegister(name)
                 else:
-                    dest = self.fetchValue(self.currentBlock, name)
+                    dest = self.fetchValue(name)
             if not Operation.operationDefined(operation,dest.tp(),src.tp()):
                 raise SemanticException(operation+" is not defined to "+dest.tp() + " "+src.tp())
             if operation == LexName.ASSIGN:
                 if src.value is None:
                     dest.value = None
-                elif src.t == LexName.INT and dest.t == LexName.FLOAT:
+                elif src.tp() == LexName.INT and dest.tp() == LexName.FLOAT:
                     dest.value = float(src.value)
                 else:
                     dest.value = src.value
@@ -299,7 +373,7 @@ class Interpreter(object):
 
                 elif operation in [LexName.PLUS,LexName.MINUS,LexName.MULTIPLY,LexName.DIVIDE] or operation in LexName.AdvancedAssign:
                     typePromote = False
-                    if src.t == LexName.INT and dest.t == LexName.FLOAT:
+                    if src.tp() == LexName.INT and dest.tp() == LexName.FLOAT:
                         typePromote = True
                     if operation in [LexName.PLUS,LexName.ASSIGNPLUS]:
                         dest.value = dest.value + src.value
