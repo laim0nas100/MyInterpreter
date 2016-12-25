@@ -1,4 +1,7 @@
 # coding=utf-8
+import sys
+
+
 def utfPrint(text):
     print(text, "utf-8")
 
@@ -346,6 +349,9 @@ class OrderedMap(dict):
         super().clear()
         self.keyOrder.clear()
 
+
+def eprint(*args, **kwargs):
+    print(*args, file=sys.stderr, **kwargs)
 
 def cmp_to_key(mycmp):
     'Convert a cmp= function into a key= function'

@@ -430,7 +430,10 @@ class Parser:
         elif tokenType == LexName.BREAK:
             node = BreakStatement()
         else:
-            node = ReturnStatement(self.exp1())
+            val = self.exp1()
+            node = ReturnStatement(val)
+            if val.isEmpty:
+                raise ParserException("Return value is empty")
         return node
 
     def flowStatement(self):

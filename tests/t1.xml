@@ -2,7 +2,7 @@
 Label 0B
 Number 0
 Parents[]
-Children[0]
+Children[0, 1]
 <Statement>
 <FunctionDeclaration>
 <VariableDeclaration>
@@ -134,15 +134,73 @@ makeArray</ValueCall>
 </VariableAssign>
 </Statement>
 <Statement>
-<FunctionCall>
+<VariableInitialization>
+<VariableDeclaration>
+<Type>
+INT
+</Type>
+name =i</VariableDeclaration>
+value=<Int_Const>
+0</Int_Const>
+</VariableInitialization>
+</Statement>
+<Statement>
+<VariableInitialization>
+<VariableDeclaration>
+<Type>
+INT
+</Type>
+name =g</VariableDeclaration>
+value=<Null_const>
+</Null_const>
+</VariableInitialization>
+</Statement>
+<Statement>
+<VariableAssign>
 <ValueCall>
-makeArray</ValueCall>
-<Arguments>
-<Arg>
+g</ValueCall>
 <Int_Const>
 10</Int_Const>
-</Arg>
-</Arguments>
-</FunctionCall>
+</VariableAssign>
+</Statement>
+<Statement>
+<WhileLoop>
+While<Bool_const>
+true</Bool_const>
+do<Block>
+Label 1B0B
+Number 1
+Parents[0]
+Children[0]
+<Statement>
+<IfStatement>
+if<BinaryOperator>
+<ValueCall>
+i</ValueCall>
+GREATER<Int_Const>
+10</Int_Const>
+</BinaryOperator>
+do<Block>
+Label 0B1B0B
+Number 0
+Parents[1]
+Children[]
+<Statement>
+<BreakStatement>
+</BreakStatement>
+</Statement>
+</Block>
+</IfStatement>
+</Statement>
+<Statement>
+<VariableAssign>
+<ValueCall>
+i</ValueCall>
+<Int_Const>
+1</Int_Const>
+</VariableAssign>
+</Statement>
+</Block>
+</WhileLoop>
 </Statement>
 </Root>

@@ -12,7 +12,17 @@ def int[] makeArray(int size){
 
 int[3] array;
 array = makeArray(30);
-makeArray(10);
+int i = 0;
+int g;
+g = 10;
+
+while true{
+    if i>10{
+        break;
+    }
+    i+=1;
+}
+
 /*
 def int rec(int i){
     if (i>10){

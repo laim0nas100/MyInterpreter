@@ -131,31 +131,32 @@ class Interpreter(object):
 
     def doJumpNew(self,label):
         for scope in self.callStack.getItemsInReverseOrder():
-            i = 0
+
             if scope is None:
                 raise SemanticException("No scopes found at "+label)
+            i = 0
             for st in scope.statements:
+                i += 1
                 if st.tuple[0] == Tnames.LABEL and st.tuple[1] == label:
-                    return [scope.label,i]
-                i+=1
+                    return [scope.label,i-1]
+
         raise SemanticException("Failed Jump")
 
     def doReturn(self,label=None)->int:
         if label is None:
-            self.usedStackValues.append(self.callStack.pop())
+            label = self.currentBlock.label
             self.currentBlock = self.callStack.getLast()
-        else:
-            while True:
-                if self.currentBlock.label == label:
-                    self.usedStackValues.append(self.callStack.pop())
-                    self.currentBlock = self.callStack.getLast()
-                    break
-                else:
-                    self.usedStackValues.append(self.callStack.pop())
-                    self.currentBlock = self.callStack.getLast()
-                if self.currentBlock is None:
-                    print("End reached")
-                    return -1
+        while True:
+            if self.currentBlock.label == label:
+                self.usedStackValues.append(self.callStack.pop())
+                self.currentBlock = self.callStack.getLast()
+                break
+            else:
+                self.usedStackValues.append(self.callStack.pop())
+                self.currentBlock = self.callStack.getLast()
+            if self.currentBlock is None:
+                print("End reached")
+                return -1
 
         if self.currentBlock is None:
             print("End reached")
@@ -177,6 +178,7 @@ class Interpreter(object):
                 i = self.doReturn()
                 if i == -1:
                     break
+                i+=1
             #pre-evaluation
 
             st = self.currentBlock.statements[i]
@@ -187,53 +189,47 @@ class Interpreter(object):
             operation = st.operation
             if operation == Tnames.LABEL:
                 pass
-            elif operation == Tnames.CALLBLOCK:
-                # self.currentBlock.returnIndex = i
+            elif operation in [Tnames.CALLBLOCK,Tnames.CALL]:
                 self.currentBlock.returnIndex = i
-                scope = Operation.generateScope(self.scopes.get(st.tuple[1]))
+                scope = None
+
+                if operation == Tnames.CALL:
+                    self.evaluate(TAC(Tnames.POP, "_temp"))
+                    reg = self.setOrGetRegister("_temp")
+                    if reg.value != self.fetchFunction(st.tuple[1]).parameters.__len__():
+                        raise SemanticException("Function Parameter amount miss-match")
+
+                    scope = self.doFunction(self.callStack.getLast(), st.tuple[1])
+                else:
+                    scope = Operation.generateScope(self.scopes.get(st.tuple[1]))
                 self.currentBlock = scope
                 self.callStack.append(scope)
                 print("Call stack:"+str(self.callStack))
                 i = -1
-            elif operation == Tnames.JUMP:
-                tup = self.doJumpNew(st.tuple[1])
-                self.currentBlock = self.scopes.get(tup[0])
-                i = tup[1]
-
-
-            elif operation == Tnames.JUMPZ:
-                reg = self.setOrGetRegister(st.tuple[1])
-                if not reg.booleanValue():
-                    tup = self.doJumpNew(st.tuple[2])
+            elif operation in [Tnames.JUMPZ,Tnames.JUMP]:
+                boolVal = True
+                if operation == Tnames.JUMPZ:
+                    reg = self.setOrGetRegister(st.tuple[2])
+                    boolVal = reg.booleanValue()
+                if operation==Tnames.JUMP or not boolVal:
+                    tup = self.doJumpNew(st.tuple[1])
                     self.currentBlock = self.scopes.get(tup[0])
                     i = tup[1]
 
-            elif operation == Tnames.CALL:
-                # reg = self.setOrGetRegister("_temp")
-                self.currentBlock.returnIndex = i
-                self.evaluate(TAC(Tnames.POP,"_temp"))
-                reg = self.setOrGetRegister("_temp")
-                if reg.value != self.fetchFunction(st.tuple[1]).parameters.__len__():
-                    raise SemanticException("Function Parameter amount miss-match")
-
-                func = self.doFunction(self.callStack.getLast(),st.tuple[1])
-                self.currentBlock = func
-                self.callStack.append(func)
-                print("Call stack:" + str(self.callStack))
-                i = -1
             elif operation == Tnames.RETURN:
                 fetched = self.fetchFunction(st.tuple[2])
                 val = self.stack.getLast()
                 if val.tp() != fetched.tp():
                     if val.tp() == LexName.NULL:
                         raise SemanticException("Function " + st.tuple[2] + " " + "returned nothing")
-                    raise SemanticException("Function "+st.tuple[2]+" "+"returned different type than declared")
+                    raise SemanticException("Function "+st.tuple[2]+" "+"returned different "+val.tp()+" declared"+fetched.tp())
                 i = self.doReturn(st.tuple[1])
                 if i == -1:
                     break
             else:
                 #Non block jumping command
                 self.evaluate(st)
+
 
 
 

@@ -20,12 +20,13 @@ class TACgen:
         self.scopes = OrderedMap()
         self.currentBlockLabel = None
         self.currentBlock = None
-        self.continueLabel = None
-        self.breakLabel = None
+        self.continueLabel = ArrayList(None,None)
+        self.breakLabel = ArrayList(None,None)
         self.rootLabel = "0B"
         self.functionStack = ""
         self.currentFunction = ArrayList(None,None)
         self.currentFunctionName = ArrayList(None,None)
+        self.returnWasDeclared = ArrayList(None,None)
 
     def makeTmp(self,index: int):
         return "_r" + str(index)
@@ -172,7 +173,7 @@ class TACgen:
                         else:
                             scope.variables.put(node.name, TVariable([node.tp, False], node.name))
                         statements.extend(self.untangleExpression(node.value))
-                        statements.append(TAC(Tnames.INIT,node,self.makeTmp(0)))
+                        statements.append(TAC(Tnames.INIT,[node.tp,node.name],self.makeTmp(0)))
                     elif isinstance(node,ArrayDeclaration):
                         if self.nameIsDefined(scope.label, node.name, checkOnlyLocal=True):
                             raise SemanticException(node.name + " Is allready defined in this scope")
@@ -195,12 +196,14 @@ class TACgen:
                 statements.extend(self.untangleExpression(node.node))
                 statements.append(TAC(Tnames.PUSH,self.makeTmp(0)))
                 statements.append(TAC(Tnames.RETURN,self.currentFunction.getLast(),self.currentFunctionName.getLast()))
+                self.returnWasDeclared.pop()
+                self.returnWasDeclared.append(True)
             elif isinstance(node,BreakStatement):
                 if self.breakLabel is not None:
-                    statements.append(TAC(Tnames.JUMP,self.breakLabel))
+                    statements.append(TAC(Tnames.JUMP,self.breakLabel.getLast()))
             elif isinstance(node,ContinueStatement):
                 if self.continueLabel is not None:
-                    statements.append(TAC(Tnames.JUMP,self.continueLabel))
+                    statements.append(TAC(Tnames.JUMP,self.continueLabel.getLast()))
             elif isinstance(node,IfStatement):
                 statements.append(TAC(Tnames.CALLBLOCK,node.blocks[0].label))
                 self.parseIf(node)
@@ -233,6 +236,7 @@ class TACgen:
         self.functionStack += "f"
         self.currentFunction.append(functionScope.label)
         self.currentFunctionName.append(functionScope.functionName)
+        self.returnWasDeclared.append(False)
         self.parseBlock(node.body)
 
         #popping variables from stack
@@ -244,6 +248,8 @@ class TACgen:
         functionScope.statements.append(TAC(Tnames.RETURN, self.currentFunction.getLast(),self.currentFunctionName.getLast()))
         self.currentFunction.pop()
         self.currentFunctionName.pop()
+        if not self.returnWasDeclared.pop():
+            raise SemanticException("Return was not declared in function "+function.name)
         self.functionStack = self.functionStack[:-1]
 
     def parseArrayElementAssign(self,node:ArrayElementAssign):
@@ -280,22 +286,22 @@ class TACgen:
         exitLabel = loop.node.exitLabel()
         label = loop.node.label
         continueLabel = "C"+label
-        self.continueLabel = continueLabel
-        self.breakLabel = exitLabel
+        self.continueLabel.append(continueLabel)
+        self.breakLabel.append(exitLabel)
         self.parseBlock(loop.node,False)
         scope = self.scopes.get(label)
         stats.append(TAC(Tnames.LABEL,label))
         if addContinue:
             stats.append(TAC(Tnames.LABEL,continueLabel))
         stats.extend(self.untangleExpression(loop.condition))
-        stats.append(TAC(Tnames.JUMPZ,self.makeTmp(0),exitLabel))
+        stats.append(TAC(Tnames.JUMPZ,exitLabel,self.makeTmp(0)))
         stats.extend(scope.statements)
         stats.append(TAC(Tnames.JUMP,label))
         stats.append(TAC(Tnames.LABEL,exitLabel))
         scope.statements = stats
         #self.scopes.put(scope.label,scope)
-        self.breakLabel = None
-        self.continueLabel = None
+        self.breakLabel.pop()
+        self.continueLabel.pop()
 
     def parseIf(self,st:IfStatement):
 
@@ -305,7 +311,7 @@ class TACgen:
             notLabel = "N"+st.blocks[i].label
             self.parseBlock(st.blocks[i])
             statements.extend(self.untangleExpression(st.condition[i]))
-            statements.append(TAC(Tnames.JUMPZ,self.makeTmp(0),notLabel))
+            statements.append(TAC(Tnames.JUMPZ,notLabel,self.makeTmp(0)))
 
             scope = self.scopes.get(st.blocks[i].label)
             scope.statements.extendAt(statements,0)
@@ -346,7 +352,6 @@ class TACgen:
                 elif isinstance(exp, ArrayCall):
                     if not self.nameIsDefined(self.currentBlockLabel,exp.name,False):
                         raise SemanticException("Array "+exp.name+" is not defined")
-                    # print("Found ArrayCall")
                     untangleExp(exp.index,index+1)
                     statements.append(TAC(Tnames.LOADARR,self.makeTmp(index),[exp.name,self.makeTmp(index+1)]))
                 else:
