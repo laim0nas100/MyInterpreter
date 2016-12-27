@@ -1,11 +1,12 @@
 
 from definitions import *
+from src.ASTnodes import FnParameter
 from src.LexNames import LexName
 from src.SpecificTypes import Scope, Reg, StaticArray, TVariable, Operation, TFunction
 
-from src.TAC import TAC, Tnames
+from src.TAC import TAC, Tnames, TACgen
 from src.lexer import Token, Lexer
-from src.lib import OrderedMap, ArrayList
+from src.lib import OrderedMap, ArrayList, eprint
 from src.parser import Parser
 
 
@@ -15,46 +16,98 @@ class Interpreter(object):
 
     builtInFunctions = ['input','print']
     @staticmethod
-    def prepateAST(file):
-        print("Lexer start")
+    def prepateAST(file,debug = False):
+        if debug:
+            print("Lexer start")
         Token.readLanguageDefinition(HOME_DIR+"/src/param/reserved.txt")
-        print("Lexer initialization end")
+        if debug:
+            print("Lexer initialization end")
         lexer = Lexer(file)
         lexer.lexerize()
-        print(lexer.tokenList)
+        if debug:
+            print(lexer.tokenList)
         for token in lexer.tokenList:
             if token.type == LexName.LEXER_ERROR:
                 raise LexerException(token.__str__())
         parser = Parser(lexer.tokenList)
         beforeParsing = len(parser.tokenList)
-        print("Blocks left and right matching: " + str(parser.countBlocks()))
+        if debug:
+            print("Blocks left and right matching: " + str(parser.countBlocks()))
         root = parser.root()
 
         while parser.needReparse:
-            print("Reparsing")
+            if debug:
+                print("Reparsing")
             parser.needReparse = False
             root = parser.root()
+        if debug:
             print("Updated token list")
             print(parser.tokenList)
 
-        print("Updated token list")
-        print(parser.tokenList)
-        if beforeParsing != parser.tokenList.__len__():
-            print("Mistakes were found at:")
-            for token in parser.tokenList:
-                if token.value is None:
-                    print(token)
+        for token in parser.tokenList:
+            if token.value is None:
+                parser.mistakesFoundAt.append(token)
+        if parser.mistakesFoundAt.__len__()>0:
             print("Before:" + str(beforeParsing) + " After: " + str(parser.tokenList.__len__()))
+            print("Mistakes were found at:")
+            for mistake in parser.mistakesFoundAt:
+                print(mistake)
         else:
             print("No syntax mistakes")
         return root
 
     @staticmethod
-    def simpleTest(file):
+    def simpleTest(file,debug=False):
         root = Interpreter.prepateAST(file)
-        w = open(file+".xml", "w")
-        w.write(root.xml())
-        return root
+        t = TACgen()
+        Interpreter.addDefaultGlobalFunctions(t)
+        t.parseRoot(root)
+        i = Interpreter(t.scopes)
+        i.debug = debug
+        i.globalFunctions = t.globalFunctions
+        i.interpretBlock(t.rootLabel)
+        return None
+
+    @staticmethod
+    def addDefaultGlobalFunctions(t:TACgen):
+        def f1(ob: list):
+            eprint(ob[0])
+            return [LexName.NULL, ""]
+
+        def f2(ob: list):
+            string = input()
+            return [LexName.STRING, string]
+
+        def f3(ob: list):
+            return [LexName.STRING, str(ob[0])]
+
+        def f4(ob: list):
+            string = ob[0]
+            try:
+                i = int(string)
+            except ValueError:
+                i = 0
+            return [LexName.INT, i]
+
+        def f5(ob: list):
+            string = ob[0]
+            index = ob[1]
+            try:
+                char = string[index]
+            except Exception:
+                char = None
+            return [LexName.STRING, char]
+
+        t.addGlobalFunction(TFunction([LexName.NULL, False], Token.get(LexName.PRINT),"Global",
+                                      [FnParameter(LexName.STRING, "ob")], f1))
+        t.addGlobalFunction(TFunction([LexName.STRING, False], Token.get(LexName.INPUT),"Global",
+                                      [], f2))
+        t.addGlobalFunction(TFunction([LexName.STRING, False], "toStr", "Global",
+                                      [FnParameter(LexName.STRING, "ob")], f3))
+        t.addGlobalFunction(TFunction([LexName.INT, False], "toInt", "Global",
+                                      [FnParameter(LexName.STRING, "ob")], f4))
+        t.addGlobalFunction(TFunction([LexName.STRING, False], "charAt", "Global",
+                                      [FnParameter(LexName.STRING, "ob"), FnParameter(LexName.INT, "i")], f5))
 
     def __init__(self,scopes:OrderedMap):
         self.scopes = scopes
@@ -64,6 +117,9 @@ class Interpreter(object):
         self.rootLabel = "0B"
         self.callStack = ArrayList(None,None)
         self.usedStackValues = ArrayList(None,None)
+        self.globalFunctions = OrderedMap()
+        self.executedStatements = ArrayList(None,None)
+        self.debug = False
 
     def stringRegisters(self):
         string = ""
@@ -78,9 +134,6 @@ class Interpreter(object):
         else:
             scope.registers.put(regName,Reg(regName))
             return scope.registers.get(regName)
-
-
-
 
     def resolveType(self,t:str):
         if LexName.INT in t:
@@ -102,6 +155,8 @@ class Interpreter(object):
         raise SemanticException("Value "+name+" was not found")
 
     def fetchFunction(self,name:str)->TFunction:
+        if self.globalFunctions.containsKey(name):
+            return self.globalFunctions.get(name)
         for scope in self.callStack.getItemsInReverseOrder():
             if scope.functions.containsKey(name):
                 return scope.functions.get(name)
@@ -111,35 +166,26 @@ class Interpreter(object):
         return Operation.generateScope(self.scopes.get(startingLabel),"")
 
     def doFunction(self,startingLabel,functionName)->Scope:
-        if functionName in Interpreter.builtInFunctions:
-            raise Exception("Not yet")
-        else:
+        for scope in self.scopes.returnItemsInOrder():
+            if scope.functions.containsKey(functionName):
+                fLabel = scope.functions.get(functionName).label
+                return Operation.generateScope(self.scopes.get(fLabel))
+            if scope.functionName == functionName:
+                if scope.label in startingLabel:
+                    return Operation.generateScope(self.scopes.get(startingLabel))
+        raise Exception("Failed to call "+functionName +" from "+ startingLabel)
 
-            for scope in self.scopes.returnItemsInOrder():
-                if scope.functions.containsKey(functionName):
-                    fLabel = scope.functions.get(functionName).label
-                    return Operation.generateScope(self.scopes.get(fLabel))
-                if scope.functionName == functionName:
-                    if scope.label in startingLabel:
-                        return Operation.generateScope(self.scopes.get(startingLabel))
-            raise Exception("Failed to call "+functionName +" from "+ startingLabel)
-
-
-
-
-
-
-    def doJumpNew(self,label):
+    def doJump(self, label):
         for scope in self.callStack.getItemsInReverseOrder():
-
             if scope is None:
                 raise SemanticException("No scopes found at "+label)
             i = 0
             for st in scope.statements:
-                i += 1
-                if st.tuple[0] == Tnames.LABEL and st.tuple[1] == label:
-                    return [scope.label,i-1]
 
+                if st.tuple[0] == Tnames.LABEL and st.tuple[1] == label:
+                    self.currentBlock = scope
+                    return i
+                i += 1
         raise SemanticException("Failed Jump")
 
     def doReturn(self,label=None)->int:
@@ -155,21 +201,29 @@ class Interpreter(object):
                 self.usedStackValues.append(self.callStack.pop())
                 self.currentBlock = self.callStack.getLast()
             if self.currentBlock is None:
-                print("End reached")
+                self.executedStatements.append("End reached")
+                if self.debug:
+                    print(self.executedStatements.getLast())
                 return -1
 
         if self.currentBlock is None:
-            print("End reached")
+            self.executedStatements.append("End reached")
+            if self.debug:
+                print(self.executedStatements.getLast())
             return -1
 
-        print("Call stack:" + str(self.callStack))
+        self.executedStatements.append("Call stack:" + str(self.callStack))
+        if self.debug:
+            print(self.executedStatements.getLast())
         return self.currentBlock.returnIndex
 
 
-    def interpretBlockNew(self, label: str):
+    def interpretBlock(self, label: str):
         self.callStack.append(self.generateScope(label))
         self.currentBlock = self.callStack.getLast()
-        print("Call stack:" + str(self.callStack))
+        self.executedStatements.append("Call stack:" + str(self.callStack))
+        if self.debug:
+            print(self.executedStatements.getLast())
         i = -1
         while True:
             i += 1
@@ -185,36 +239,53 @@ class Interpreter(object):
             string = ""
             for reg in self.currentBlock.registers.returnItemsInOrder():
                 string+=str(reg)
-            print(str(i).zfill(3)+":",st,string)
+            self.executedStatements.append(str(i).zfill(3)+":"+str(st)+string)
+            if self.debug:
+                print(self.executedStatements.getLast())
             operation = st.operation
             if operation == Tnames.LABEL:
                 pass
             elif operation in [Tnames.CALLBLOCK,Tnames.CALL]:
-                self.currentBlock.returnIndex = i
+
                 scope = None
 
                 if operation == Tnames.CALL:
-                    self.evaluate(TAC(Tnames.POP, "_temp"))
-                    reg = self.setOrGetRegister("_temp")
-                    if reg.value != self.fetchFunction(st.tuple[1]).parameters.__len__():
+                    # self.evaluate(TAC(Tnames.POP, "_temp"))
+                    # reg = self.setOrGetRegister("_temp")
+                    argumentCount = self.stack.pop().value
+                    fetched = self.fetchFunction(st.tuple[1])
+                    if argumentCount != fetched.parameters.__len__():
                         raise SemanticException("Function Parameter amount miss-match")
-
-                    scope = self.doFunction(self.callStack.getLast(), st.tuple[1])
+                    # global function
+                    if self.globalFunctions.containsKey(fetched.name):
+                        variables = []
+                        for var in range(0,fetched.parameters.__len__()):
+                            variables.insert(0,self.stack.pop().value)
+                        retVal = fetched.execute(variables)
+                        systemReg = Reg("_sysReg")
+                        systemReg.t = retVal[0]         # set type
+                        systemReg.value = retVal[1]     # set value
+                        self.stack.append(systemReg)
+                    else:
+                        scope = self.doFunction(self.callStack.getLast(), st.tuple[1])
                 else:
                     scope = Operation.generateScope(self.scopes.get(st.tuple[1]))
-                self.currentBlock = scope
-                self.callStack.append(scope)
-                print("Call stack:"+str(self.callStack))
-                i = -1
+                if scope is not None:
+                    self.currentBlock.returnIndex = i
+                    self.callStack.append(scope)
+                    self.currentBlock = self.callStack.getLast()
+                    self.executedStatements.append("Call stack:"+str(self.callStack))
+                    if self.debug:
+                        print(self.executedStatements.getLast())
+                    i = -1
             elif operation in [Tnames.JUMPZ,Tnames.JUMP]:
                 boolVal = True
                 if operation == Tnames.JUMPZ:
                     reg = self.setOrGetRegister(st.tuple[2])
                     boolVal = reg.booleanValue()
-                if operation==Tnames.JUMP or not boolVal:
-                    tup = self.doJumpNew(st.tuple[1])
-                    self.currentBlock = self.scopes.get(tup[0])
-                    i = tup[1]
+                if (operation==Tnames.JUMP) or (not boolVal):
+                    index = self.doJump(st.tuple[1])
+                    i = index
 
             elif operation == Tnames.RETURN:
                 fetched = self.fetchFunction(st.tuple[2])
@@ -230,15 +301,12 @@ class Interpreter(object):
                 #Non block jumping command
                 self.evaluate(st)
 
-
-
-
     def evaluate(self,st:TAC):
-        '''Black hole "all in one method" for ALL Statements'''
+        """Black hole all in one method" for ALL Statements"""
         if st.operation == Tnames.LOAD:
             value = st.tuple[2]
             reg = self.setOrGetRegister(st.tuple[1])
-            #resolve if its const or not
+            # resolve if its const or not
             if isinstance(value,list):
                 t = self.resolveType(value[0])
                 reg.t = t
@@ -255,7 +323,7 @@ class Interpreter(object):
                 reg.t = reg1.t
                 reg.value = reg1.value
             else:
-                #value fetch
+                # value fetch
                 varName = st.tuple[2]
                 var = self.fetchValue(varName)
                 regName = st.tuple[1]
@@ -264,7 +332,7 @@ class Interpreter(object):
                 reg.value = var.value
 
         elif st.operation == Tnames.INIT:
-            name = st.tuple[1][1] #get the name
+            name = st.tuple[1][1] # get the name
             regName = st.tuple[2]
             reg = self.setOrGetRegister(regName)
             var = self.currentBlock.variables.get(name)
@@ -287,16 +355,13 @@ class Interpreter(object):
         elif st.operation == Tnames.LOADARR:
             # Load from Array
             regName = st.tuple[1]
-            reg = self.registers.get(regName)
+            reg = self.setOrGetRegister(regName)
             indexRegName = st.tuple[2][1]
             indexReg = self.setOrGetRegister(indexRegName)
             arrayName = st.tuple[2][0]
             array = self.fetchValue(arrayName)
-            if indexReg.tp() != LexName.INT:
-                raise SemanticException("Array index must be INT")
-            else:
-                reg.value = array.value[indexReg.value].value
-                reg.t = array.t
+            reg.value = array.value.get(indexReg).value
+            reg.t = array.t
 
         elif st.operation == Tnames.PUSH:
             regName = st.tuple[1]

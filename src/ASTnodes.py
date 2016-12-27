@@ -39,6 +39,7 @@ class Block(AST):
         self.children = list()
         self.parents = list()
         self.label = ""
+        self.number = 0;
 
     def exitLabel(self):
         return "E"+self.label
@@ -185,7 +186,6 @@ class FnParameter(VariableDeclaration):
 
     def __init__(self, tp:Token, name, isArray=False):
         super().__init__(tp,name)
-        self.name = name
         self.isArray = isArray
 
     def xml(self,ob=className):

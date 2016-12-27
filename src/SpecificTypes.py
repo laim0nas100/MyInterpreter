@@ -37,11 +37,15 @@ class TVariable:
         return True
 
 class TFunction():
-    def __init__(self, t: list, name,label, parameters: list):
+    def __init__(self, t: list, name,label, parameters: list,function = None):
         self.t = t[0]
         self.isArray = t[1]
         self.name = name
         self.label = label
+        self.execute = function
+        # add a function object to execute at run-time that should return a value at the end
+        # that will be pushed to a stack
+        # must accept a list
         self.parameters = []
         for p in parameters:
             self.parameters.append(p.tp)
@@ -59,7 +63,7 @@ class Reg:
         self.value = None
 
     def __str__(self):
-        return self.name +":"+ str(self.t) +" "+ str(self.value)
+        return self.name +"["+ str(self.t)+","+str(self.value)+"];"
 
     def toTVariable(self):
         isArray = isinstance(self.value,list)
@@ -85,15 +89,12 @@ class StaticArray(ArrayList):
         for i in range(0,size):
             self.set(i,TVariable([t,False],str(i)))
 
-    def modify(self,index:Reg,val:Reg):
-        if not index.t == LexName.INT:
-            if not index.value < self.size:
-                if not val.t == self.t:
-                    self.set(index.value, val.value)
-                else:
-                    raise SemanticException("Array type miss match")
+    def get(self,index:Reg):
+        if index.tp() == LexName.INT:
+            if index.value < self.size:
+                return self[index.value]
             else:
-                raise SemanticException("Array Out of bounds")
+                raise SemanticException("Array Access Out of bounds")
         else:
             raise SemanticException("Array index is not INT")
 

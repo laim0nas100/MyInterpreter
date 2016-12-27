@@ -110,9 +110,6 @@ class ArrayList(list):
 
 
 
-
-
-
 class Table:
     def __init__(self, data=None):
 

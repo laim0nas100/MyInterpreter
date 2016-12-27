@@ -27,12 +27,14 @@ class TACgen:
         self.currentFunction = ArrayList(None,None)
         self.currentFunctionName = ArrayList(None,None)
         self.returnWasDeclared = ArrayList(None,None)
+        self.globalFunctions = OrderedMap()
 
     def makeTmp(self,index: int):
         return "_r" + str(index)
     
     def nameIsDefined(self,startingLabel:str,name:str,function=False,checkOnlyLocal=False):
-
+        if function and self.globalFunctions.containsKey(name):
+            return True
         childScope = self.scopes.get(startingLabel)
         if checkOnlyLocal:
             if function is True:
@@ -78,8 +80,6 @@ class TACgen:
             i += 1
         return statements
 
-
-
     @staticmethod
     def getTabbedStatements(statements):
         printable = []
@@ -122,10 +122,13 @@ class TACgen:
         self.currentBlockLabel = label
         self.currentBlock = self.scopes.get(label)
 
+    def addGlobalFunction(self,function:TFunction):
+        """add global functions inside this method"""
+        self.globalFunctions.put(function.name,function)
+
+
     def parseRoot(self,block:Root):
         scope = Scope(block.label)
-        scope.functions.put("print",TFunction([LexName.NULL,False], "print","0B", []))
-        scope.functions.put("input",TFunction([LexName.STRING,False], "input","0B", []))
         self.scopes.put(block.label,scope)
         self.parseBlock(block)
 
@@ -196,8 +199,11 @@ class TACgen:
                 statements.extend(self.untangleExpression(node.node))
                 statements.append(TAC(Tnames.PUSH,self.makeTmp(0)))
                 statements.append(TAC(Tnames.RETURN,self.currentFunction.getLast(),self.currentFunctionName.getLast()))
-                self.returnWasDeclared.pop()
-                self.returnWasDeclared.append(True)
+                try:
+                    self.returnWasDeclared.pop()
+                    self.returnWasDeclared.append(True)
+                except:
+                    raise SemanticException("Return declared outside a function")
             elif isinstance(node,BreakStatement):
                 if self.breakLabel is not None:
                     statements.append(TAC(Tnames.JUMP,self.breakLabel.getLast()))
@@ -219,7 +225,7 @@ class TACgen:
         self.scopes.put(functionScope.label, functionScope)
         # self.updateCurrentBlock(functionScope.label)
         if self.nameIsDefined(functionScope.label,functionScope.functionName,function=True):
-            raise SemanticException("Function name "+functionScope.functionName+" allready defined" )
+            raise SemanticException("Function name "+functionScope.functionName+"is already defined" )
         else:
 
             parentScope = self.scopes.get(functionScope.getParentLabel())

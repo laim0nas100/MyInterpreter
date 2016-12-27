@@ -16,9 +16,10 @@ class Parser:
         self.tokenList = tokenList
         self.tokenNo = 0
         self.lastInsertedToken = None
-        self.timesInsertedSemi = 0
+        self.timesInsertedSemiOrComma = 0
         self.needReparse = False
         self.errorToken = None
+        self.mistakesFoundAt = ArrayList(None,None)
 
 
     def makeNewPosition(self,prevToken):
@@ -84,16 +85,17 @@ class Parser:
         if tryNo == 0:
             self.errorToken = self.getCurrToken()
             #try to insert it
-            if expectedToken == LexName.SEMI:
-                self.timesInsertedSemi+=1
-            if self.timesInsertedSemi > self.__maxSemiInsertionCount:
-                raise ParserException("Possible infinite loop, terminating",self.errorToken)
-            self.tokenList.insert(self.tokenNo,Token(expectedToken,None,self.makeNewPosition(self.getPrevToken())))
+            if expectedToken in [LexName.SEMI,LexName.COMMA]:
+                self.timesInsertedSemiOrComma+=1
+            if self.timesInsertedSemiOrComma > self.__maxSemiInsertionCount:
+                raise ParserException("Failed to fix, terminating",self.errorToken)
+            tokenToInsert = Token(expectedToken,None,self.makeNewPosition(self.getPrevToken()))
+            self.tokenList.insert(self.tokenNo,tokenToInsert)
             self.lastInsertedToken = expectedToken
             return "INSERT"
         elif tryNo == 1:
             #try to replace it
-            self.tokenList.pop(self.tokenNo)
+            self.mistakesFoundAt.append(self.tokenList.pop(self.tokenNo))
             self.tokenList[self.tokenNo] = Token(expectedToken,None,self.makeNewPosition(self.getPrevToken()))
             return "REPLACE"
         elif tryNo >=2:
@@ -101,7 +103,7 @@ class Parser:
 
 
     def eat(self,tokenType=None,attempt:int=0):
-        if tokenType != LexName.SEMI:
+        if tokenType != (LexName.SEMI or LexName.COMMA):
             self.timesInsertedSemi = 0
         if tokenType is None:
             self.getNextToken()
@@ -242,7 +244,8 @@ class Parser:
 
     def term(self):
         node = self.factor()
-
+        if (self.getCurrToken() in LexName.AdvancedAssign) or (self.getCurrToken() == LexName.ASSIGN):
+            raise ParserException("Expression does not return a value")
         while self.getCurrTokenType() in [LexName.MULTIPLY,LexName.DIVIDE]:
             token = self.getCurrToken()
             self.eat()
