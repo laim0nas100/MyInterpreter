@@ -80,7 +80,7 @@ class Interpreter:
             print(st)
 
     @staticmethod
-    def simpleTest(file,debug=False,optimize=True)->list:
+    def simpleTest(file,debug=False,optimize=True,inputBuffer=None)->list:
 
         root = Interpreter.prepateAST(file)
         t = Interpreter.prepareTACgen(root)
@@ -102,12 +102,16 @@ class Interpreter:
 
         i = Interpreter(t.scopes)
         i.debug = debug
+        i.fromBuffer = inputBuffer is not None
+        if i.fromBuffer:
+            i.inputBuffer = inputBuffer
         i.globalFunctions = t.globalFunctions
         dateStart = datetime.datetime.now()
         if t.scopes.containsKey(t.rootLabel):
             i.interpretBlock(t.rootLabel)
         dateEnd = datetime.datetime.now()
-        return [dateStart,dateEnd,dateEnd-dateStart]
+        print("InputDelay",i.inputDelay)
+        return [dateStart,dateEnd,dateEnd-dateStart-i.inputDelay,i.inputBuffer]
 
 
 
@@ -118,7 +122,14 @@ class Interpreter:
             return [LexName.NULL, ""]
 
         def f2(ob: list):
-            string = input()
+            fromBuffer = ob[0]
+            bufferizedStack = ob[1]
+
+            if fromBuffer:
+                string = bufferizedStack.pop(0)
+            else:
+                string = input()
+                bufferizedStack.append(string)
             return [LexName.STRING, string]
 
         def f3(ob: list):
@@ -162,6 +173,10 @@ class Interpreter:
         self.globalFunctions = OrderedMap()
         self.executedStatements = ArrayList(None,None)
         self.debug = False
+        self.inputBuffer = ArrayList(None,None)
+        self.fromBuffer = False
+        initialDelay = datetime.datetime.now()
+        self.inputDelay = initialDelay-initialDelay
 
     def setOrGetRegister(self,regName):
         scope = self.callStack.getLast()
@@ -270,7 +285,11 @@ class Interpreter:
                 i+=1
             # pre-evaluation
             if i >= self.currentBlock.statements.__len__():
-                break
+                # return after CALLBLOCK/CALL to previous spot
+                i = self.doReturn()
+                if i == -1:
+                    break
+                i+=1
             try:
                 # found end
                 st = self.currentBlock.statements[i]
@@ -297,7 +316,15 @@ class Interpreter:
                         variables = []
                         for var in range(0,fetched.parameters.__len__()):
                             variables.insert(0,self.stack.pop().value)
+                        start = datetime.datetime.now()
+                        if fetched.name==Token.get(LexName.INPUT):
+                            variables.append(self.fromBuffer)
+                            variables.append(self.inputBuffer)
+
                         retVal = fetched.execute(variables)
+                        end = datetime.datetime.now()
+                        if fetched.name==Token.get(LexName.INPUT):
+                            self.inputDelay+= end - start
                         systemReg = Reg("_sysReg")
                         systemReg.t = retVal[0]         # set type
                         systemReg.value = retVal[1]     # set value

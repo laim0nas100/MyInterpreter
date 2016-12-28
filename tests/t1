@@ -1,7 +1,9 @@
-
+// surenka inputus
+// paleisti dar karta
 def int double(int i){
         return i*2;
     }
+
 def int[] makeArray(int size){
     int[size] array;
     return array;
@@ -32,9 +34,21 @@ def int fib(int f1,int f2,int max){
     }
     return fib(f2,f1+f2,max-1);
 }
-fib(1,1,25);
 
 
+int a;
+int i;
+def string concatInt(int a, int b) {
+    return toStr(a) + " " + toStr(b);
+}
+def string concatStr(string a1, string b) {
+    return toStr(i) + a1 + " " + b;
+    return 90;
+}
+
+//fib(1,1,25);
+
+i = 12*8/10;
 
 string char = charAt("stringas",1);
 if(!(char != null)){
@@ -42,142 +56,29 @@ if(!(char != null)){
 }else{
     print("char is ="+char);
 }
+print("Enter size:");
+a = toInt(input());
+print("Enter input nr2 ");
+string i2 = input();
+print(i2);
+
+string [a] strArr;
+for(i=1; i<a; i+=1;) {
+
+    strArr[i-1] = concatStr(concatInt(i, a+1), ";");
+}
+for(int i=0; i<a; i+=1;) {
+    print(strArr[i]);
+    //= concatStr(concatInt(a, a+1), ";");
+}
 
 
 
-
-
-
-
-/*
-int size = 500;
+int size = 20;
 int[size] array;
-int o = array[499];
+int o = array[size-1];
 
 array = fibb(array,size);
 for(int i=0; i<size; i+=1;){
-    print(array[i]);
+   // print(array[i]);
 }
-
-for(int i=0; i<30; i+=1;){
-    array[i] = toStr(i)+"ok";
-    print(array[i]);
-}
-print(input());
-
-while true{
-    if i>10{
-        break;
-    }
-    i+=1;
-    print(i);
-}
-
-def int rec(int i){
-    if (i>10){
-        return i;
-    }else{
-        return rec(i*2);
-    }
-}
-def int f(int i,int j){
-
-    def int r(int r){
-        return r*2;
-    }
-    return r(i)+r(j);
-}
-def string ok(){
-    return "OK";
-}
-//int a = rec(3);
-//int b = f(3,1);
-
-
-int val = 0;
-int b;
-
-b = f(2,2) + f(3,3) + f(4,4);//12
-string s = ok() + ok() + ok();
-
-for(int i=0; i<10; i+=1;){
-    for(int j =0; j<10; j+=1;){
-
-        array[j] = val;
-        val+=1;
-    }
-}
-
-//int a = 10+"1000";
-//b = a + b * 3 - (c +5);
-//int a = ((11*a + (21-2)) / a[0+1]);
-
-while(i<10){
-    int[4] arr;
-}
-{
-for(int i =0; i>0; i-=1;){
-    p = Null;
-}
-o=0;
-}
-
-
-//int[10] array;
-//array[1] = ar[2] + ar[10];
-
-def int f(int i,int j){
-    return i*j;
-}
-int[5] ar;
-ar[0] = f(f(2,2),ar[2]);
-
-if (true) {
-    print(true);
-}elif(false){
-    print("OK");
-}else{
-    return 0;
-}
-
-def int[] f(int i, string[] str, boolean bool){
-        if(ok){
-            array[i] -= 1;
-            return f(i-1);
-        }else{
-            return i*i;
-        }
-
-        return array;
-    }
-for(int i=0;true;i+=1;){
-
-    if(f(2,f(5))>4){
-        print(f(13));
-        //continue;
-    }else{
-        //break;
-        i +=2;
-        //a[1] = a[2]+a[1+a[1]];
-    }
-}
-
-
-
-for(int i=0; true; i+=1;){
-    int a = 10;
-    print(fun(a));
-    i+=2;
-    boolean i1 = 0;
-}
-
-def int[] initArray(){
-    return int[10] ar;
-}
-def int fun(int a){
-    return a+2;
-}
-int val = null;
-int i = 1;
-
-*/
