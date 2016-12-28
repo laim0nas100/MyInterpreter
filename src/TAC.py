@@ -107,8 +107,10 @@ class TACgen:
             if scope.functionName:
                 string +=" def "+scope.functionName
             statements.append(string)
+            i = 0
             for statement in scope.statements:
-                statements.append(statement.__str__())
+                statements.append(str(i).zfill(3)+":"+statement.__str__())
+                i+=1
             statements.append("")
         return statements
 
@@ -127,7 +129,7 @@ class TACgen:
         self.globalFunctions.put(function.name,function)
 
 
-    def parseRoot(self,block:Root):
+    def parseRoot(self,block:Block):
         scope = Scope(block.label)
         self.scopes.put(block.label,scope)
         self.parseBlock(block)
@@ -155,6 +157,7 @@ class TACgen:
             node = statement.node
 
             if isinstance(node,VariableAssign):
+                statements.append(TAC(Tnames.BEGINMODIFY, ""))
                 if not self.nameIsDefined(scope.label,node.name):
                     raise SemanticException(node.name + " Was not yet defined in "+scope.label)
                 if isinstance(node,ArrayElementAssign):
@@ -162,19 +165,21 @@ class TACgen:
                 else:
                     statements.extend(self.untangleExpression(node.value))
                     statements.append(TAC(node.operator.type, node.name, self.makeTmp(0)))
+                statements.append(TAC(Tnames.ENDMODIFY, ""))
             elif isinstance(node,VariableDeclaration):
                 if isinstance(node, FunctionDeclaration):
                     label = scope.label
                     self.parseDefineFunction(node)
                     self.updateCurrentBlock(label)
                 else:
-
-
+                    statements.append(TAC(Tnames.BEGININIT, ""))
                     if isinstance(node,VariableInitialization):
+
                         if self.nameIsDefined(scope.label, node.name, checkOnlyLocal=True):
                             raise SemanticException(node.name + " Is allready defined in this scope")
                         else:
                             scope.variables.put(node.name, TVariable([node.tp, False], node.name))
+
                         statements.extend(self.untangleExpression(node.value))
                         statements.append(TAC(Tnames.INIT,[node.tp,node.name],self.makeTmp(0)))
                     elif isinstance(node,ArrayDeclaration):
@@ -183,9 +188,10 @@ class TACgen:
                         else:
                             scope.variables.put(node.name, TVariable([node.tp, True], node.name))
                         statements.extend(self.untangleExpression(node.size))
-                        statements.append(TAC(Tnames.INITARR,self.makeTmp(0), [node.tp, node.name]))
+                        statements.append(TAC(Tnames.INITARR,[node.tp, node.name],self.makeTmp(0)))
                     else:
                         statements.append(TAC(Tnames.INIT,node.name, Null(Token(LexName.NULL,None))))
+                    statements.append(TAC(Tnames.ENDINIT, ""))
             elif isinstance(node,WhileLoop):
                 statements.append(TAC(Tnames.CALLBLOCK,node.node.label))
                 if isinstance(node, ForLoop):
@@ -214,7 +220,7 @@ class TACgen:
                 statements.append(TAC(Tnames.CALLBLOCK,node.blocks[0].label))
                 self.parseIf(node)
             elif isinstance(node,EXP):
-                statements.extend(self.untangleExpression(node))
+                statements.extend(self.untangleExpression(node,eliminate=True))
         return statements
 
     def parseDefineFunction(self,node:FunctionDeclaration):
@@ -262,7 +268,7 @@ class TACgen:
         statements = []
         statements.extend(self.untangleExpression(node.value))
         statements.append(TAC(Tnames.PUSH, self.makeTmp(0)))
-        #_t1 = index, _t0 = value
+        #_r1 = index, _r0 = value
         statements.extend(self.untangleExpression(node.index))
         statements.append(TAC(Tnames.LOAD,self.makeTmp(1),self.makeTmp(0)))
         statements.append(TAC(Tnames.POP,self.makeTmp(0)))
@@ -316,7 +322,7 @@ class TACgen:
             statements = []
             notLabel = "N"+st.blocks[i].label
             self.parseBlock(st.blocks[i])
-            statements.extend(self.untangleExpression(st.condition[i]))
+            statements.extend(self.untangleExpression(st.condition[i],eliminate=True))
             statements.append(TAC(Tnames.JUMPZ,notLabel,self.makeTmp(0)))
 
             scope = self.scopes.get(st.blocks[i].label)
@@ -331,8 +337,13 @@ class TACgen:
         if st.containsElse:
             self.parseBlock(st.blocks[-1])
 
-    def untangleExpression(self,exp:AST,index=0):
+    def untangleExpression(self,exp:AST,index=0,eliminate=False):
         statements = []
+        class Info:
+            def __init__(self):
+                self.eliminate = False
+        info = Info()
+        info.eliminate = eliminate
 
         def untangleExp(exp:AST,index:int):
             if isinstance(exp,EXP):
@@ -344,6 +355,7 @@ class TACgen:
                 if isinstance(exp, Literall):
                     statements.append(TAC(Tnames.LOAD,self.makeTmp(index),[exp.token.type, exp.token.value]))
             if isinstance(exp,ValueCall):
+                info.eliminate = False
                 if isinstance(exp, FunctionCall):
                     if not self.nameIsDefined(self.currentBlockLabel,exp.name,function=True,checkOnlyLocal=False):
                         raise SemanticException("Function "+exp.name+" is not defined in " + self.currentBlockLabel)
@@ -369,6 +381,9 @@ class TACgen:
 
 
         untangleExp(exp,index)
+        if info.eliminate:
+            statements.insert(0, TAC(Tnames.BEGINEXP, ""))
+            statements.append(TAC(Tnames.ENDEXP, ""))
         return statements
 
     def generateArithmetic(self,operation,reg1:int,reg2:int)->TAC:

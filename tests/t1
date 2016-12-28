@@ -1,35 +1,54 @@
 
-/*def int double(int i){
+def int double(int i){
         return i*2;
     }
 def int[] makeArray(int size){
     int[size] array;
     return array;
-
 }
 
 def int[] fibb(int[] array,int ammount){
     array[0] = 1;
     array[1] = 1;
     for(int i=2; i<ammount; i+=1;){
-        array[i] = array[i-1] + array[i-2];
+        int val = 0;
+        int j = val;
+        array[i] = array[i-1] + array[i-2] + val;
     }
     return array;
 }
 def int fib(int f1,int f2,int max){
     print(f1);
-    if (f1>max){
+    float i;
+
+    i = 1231*48421/12;
+    i = 1231*48421/12;
+    i = 1231*48421/12;
+    i = 1231*48421/12;
+    i = 1231*48421/12;
+
+    if (max==0){
         return f1;
     }
-    return fib(f2,f1+f2,max);
-}*/
-//fib(1,1,200000);
+    return fib(f2,f1+f2,max-1);
+}
+fib(1,1,25);
+
+
+
 string char = charAt("stringas",1);
 if(!(char != null)){
     print("char is null");
 }else{
     print("char is ="+char);
 }
+
+
+
+
+
+
+
 /*
 int size = 500;
 int[size] array;

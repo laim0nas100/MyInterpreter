@@ -341,6 +341,11 @@ class OrderedMap(dict):
             self.setdefault(key,value)
             self.keyOrder.append(key)
 
+    def removeByKey(self,key):
+        if self.containsKey(key):
+            index = self.keyOrder.index(key)
+            self.keyOrder.pop(index)
+            self.pop(key)
 
     def clear(self):
         super().clear()

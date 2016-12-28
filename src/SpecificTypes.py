@@ -142,20 +142,27 @@ class Scope:
         return self.label
 
 class Tnames:
-    LOAD = "LOAD" #loads to register following value
-    JUMP = "JUMP" #jumps within all scopes
-    JUMPZ = "JUMPZ" #jump if operand is zero to label {x, label}
-   # JUMPBLOCK = "JUMPBLOCK" #jump within scope
-    LOADARR = "LOADARR" #loads to register x from [array, index]
-    LABEL = "LABEL" #creates new label
-    INIT = "INIT" #initialises new variable {type,value,name}
-    INITARR = "INITARR" #initialises new array {size, [type,name]}
-    CALLBLOCK = "CALLBLOCK" #jumps to block
-    POP = "POP" #pops to register following value
-    PUSH = "PUSH" #pushes to register the following value
-    RETURN = "RETURN"
-    ENDBLOCK = "ENDBLOCK" #does nothing, marks end of a block
-    CALL = "CALL" #call a function
+    LOAD = "LOAD"           # loads to register following value
+    JUMP = "JUMP"           # jumps within all scopes
+    JUMPZ = "JUMPZ"         # jump if operand is zero to label {x, label}
+    LOADARR = "LOADARR"     # loads to register x from [array, index]
+    LABEL = "LABEL"         # creates new label
+    INIT = "INIT"           # initialises new variable {type,value,name}
+    INITARR = "INITARR"     # initialises new array {size, [type,name]}
+    CALLBLOCK = "CALLBLOCK" # jumps to block
+    POP = "POP"             # pops to register following value
+    PUSH = "PUSH"           # pushes to register the following value
+    RETURN = "RETURN"       # returns to specified block
+    CALL = "CALL"           # call a function
+    # used to find unused expressions
+    ENDEXP = "ENDEXP"       # does nothing, marks end
+    BEGINEXP = "BEGINEXP"   # does nothing, marks start
+    # used to find unused variable initializations
+    ENDINIT = "ENDINIT"     # does nothing, marks end
+    BEGININIT = "BEGININIT" # does nothing, marks start
+    # used to find unused variable usage
+    ENDMODIFY = "ENDMODIFY"  # does nothing, marks end
+    BEGINMODIFY = "BEGINMODIFY"  # does nothing, marks start
 
 class TAC:
     def __init__(self,operation,operand0,operand1=None):
@@ -291,7 +298,7 @@ class Operation:
             return op in Operation._plus
         elif opType in [LexName.MINUS,LexName.MULTIPLY,LexName.DIVIDE]:
             return op in Operation._arit
-        elif opType in LexName.ArithMethicCompare:
+        elif opType in LexName.ArithmeticCompare:
             return op in Operation._aritCompare
         elif opType == LexName.ASSIGN:
             return op in Operation._assign

@@ -1,7 +1,9 @@
+import datetime
 
 from definitions import *
-from src.ASTnodes import FnParameter
+from src.ASTnodes import FnParameter, Block
 from src.LexNames import LexName
+from src.Optimizer import Optimizer
 from src.SpecificTypes import Scope, Reg, StaticArray, TVariable, Operation, TFunction
 
 from src.TAC import TAC, Tnames, TACgen
@@ -12,11 +14,10 @@ from src.parser import Parser
 
 
 
-class Interpreter(object):
 
-    builtInFunctions = ['input','print']
+class Interpreter:
     @staticmethod
-    def prepateAST(file,debug = False):
+    def prepateAST(file,debug=False):
         if debug:
             print("Lexer start")
         Token.readLanguageDefinition(HOME_DIR+"/src/param/reserved.txt")
@@ -57,16 +58,58 @@ class Interpreter(object):
         return root
 
     @staticmethod
-    def simpleTest(file,debug=False):
-        root = Interpreter.prepateAST(file)
+    def prepareTACgen(root:Block)->TACgen:
         t = TACgen()
         Interpreter.addDefaultGlobalFunctions(t)
         t.parseRoot(root)
+        return t
+
+    @staticmethod
+    def optimizeTest(file,debug=False):
+        root = Interpreter.prepateAST(file)
+        t = Interpreter.prepareTACgen(root)
+        for st in t.getStatementsAsString():
+            print(st)
+        Optimizer.output = debug
+        print("\nOptimize!\n")
+        Optimizer.scopes = t.scopes
+        t = Optimizer.optimize(t)
+        print("\nAfter:\n")
+
+        for st in t.getStatementsAsString():
+            print(st)
+
+    @staticmethod
+    def simpleTest(file,debug=False,optimize=True)->list:
+
+        root = Interpreter.prepateAST(file)
+        t = Interpreter.prepareTACgen(root)
+        if debug:
+            for s in t.getStatementsAsString():
+                print(s)
+
+        Optimizer.output = debug
+        if optimize:
+            t = Optimizer.optimize(t)
+        else:
+            Optimizer.scopes = t.scopes
+            for scope in t.scopes.returnItemsInOrder():
+                Optimizer.removeTags(scope)
+        if debug:
+            print("AFTER:")
+            for s in t.getStatementsAsString():
+                print(s)
+
         i = Interpreter(t.scopes)
         i.debug = debug
         i.globalFunctions = t.globalFunctions
-        i.interpretBlock(t.rootLabel)
-        return None
+        dateStart = datetime.datetime.now()
+        if t.scopes.containsKey(t.rootLabel):
+            i.interpretBlock(t.rootLabel)
+        dateEnd = datetime.datetime.now()
+        return [dateStart,dateEnd,dateEnd-dateStart]
+
+
 
     @staticmethod
     def addDefaultGlobalFunctions(t:TACgen):
@@ -112,7 +155,6 @@ class Interpreter(object):
     def __init__(self,scopes:OrderedMap):
         self.scopes = scopes
         self.stack = ArrayList(None,None)
-        self.registers = OrderedMap()
         self.currentBlock = Scope("0B")
         self.rootLabel = "0B"
         self.callStack = ArrayList(None,None)
@@ -120,12 +162,6 @@ class Interpreter(object):
         self.globalFunctions = OrderedMap()
         self.executedStatements = ArrayList(None,None)
         self.debug = False
-
-    def stringRegisters(self):
-        string = ""
-        for reg in self.registers.returnItemsInOrder():
-            string += reg.__str__()+"\n"
-        return string
 
     def setOrGetRegister(self,regName):
         scope = self.callStack.getLast()
@@ -217,7 +253,6 @@ class Interpreter(object):
             print(self.executedStatements.getLast())
         return self.currentBlock.returnIndex
 
-
     def interpretBlock(self, label: str):
         self.callStack.append(self.generateScope(label))
         self.currentBlock = self.callStack.getLast()
@@ -233,9 +268,16 @@ class Interpreter(object):
                 if i == -1:
                     break
                 i+=1
-            #pre-evaluation
+            # pre-evaluation
+            if i >= self.currentBlock.statements.__len__():
+                break
+            try:
+                # found end
+                st = self.currentBlock.statements[i]
+            except IndexError as e:
+                print(e,"at",i)
 
-            st = self.currentBlock.statements[i]
+                break
             string = ""
             for reg in self.currentBlock.registers.returnItemsInOrder():
                 string+=str(reg)
@@ -243,15 +285,9 @@ class Interpreter(object):
             if self.debug:
                 print(self.executedStatements.getLast())
             operation = st.operation
-            if operation == Tnames.LABEL:
-                pass
-            elif operation in [Tnames.CALLBLOCK,Tnames.CALL]:
-
+            if operation in [Tnames.CALLBLOCK,Tnames.CALL]:
                 scope = None
-
                 if operation == Tnames.CALL:
-                    # self.evaluate(TAC(Tnames.POP, "_temp"))
-                    # reg = self.setOrGetRegister("_temp")
                     argumentCount = self.stack.pop().value
                     fetched = self.fetchFunction(st.tuple[1])
                     if argumentCount != fetched.parameters.__len__():
@@ -344,10 +380,10 @@ class Interpreter(object):
             else:
                 var.t = reg.t
         elif st.operation == Tnames.INITARR:
-            regName = st.tuple[1]
+            regName = st.tuple[2]
             reg = self.setOrGetRegister(regName)
-            name = st.tuple[2][1]
-            t = st.tuple[2][0]
+            name = st.tuple[1][1]
+            t = st.tuple[1][0]
             var = self.currentBlock.variables.get(name)
             if reg.tp() != LexName.INT:
                 raise SemanticException("Array size must be INT")
