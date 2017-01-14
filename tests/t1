@@ -21,18 +21,20 @@ def int[] fibb(int[] array,int ammount){
 }
 def int fib(int f1,int f2,int max){
     print(f1);
-    float i;
-
-    i = 1231*48421/12;
-    i = 1231*48421/12;
-    i = 1231*48421/12;
-    i = 1231*48421/12;
-    i = 1231*48421/12;
-
     if (max==0){
         return f1;
     }
     return fib(f2,f1+f2,max-1);
+}
+
+def int mod(int number, int mod){
+    if(number<0){
+        return mod(number + mod, mod);
+    }elif(number>=mod){
+        return mod(number - mod, mod);
+    }else{
+        return number;
+    }
 }
 
 
@@ -45,33 +47,15 @@ def string concatStr(string a1, string b) {
     return toStr(i) + a1 + " " + b;
     return 90;
 }
-
-//fib(1,1,25);
-
-i = 12*8/10;
-
-string char = charAt("stringas",1);
-if(!(char != null)){
-    print("char is null");
-}else{
-    print("char is ="+char);
-}
-print("Enter size:");
-a = toInt(input());
-print("Enter input nr2 ");
-string i2 = input();
-print(i2);
-
-string [a] strArr;
-for(i=1; i<a; i+=1;) {
-
-    strArr[i-1] = concatStr(concatInt(i, a+1), ";");
-}
-for(int i=0; i<a; i+=1;) {
-    print(strArr[i]);
-    //= concatStr(concatInt(a, a+1), ";");
-}
-
+/*
+int number;
+int mod;
+print("Write number:");
+number = toInt(input());
+print("Write mod:");
+mod = toInt(input());
+print("Mod=" + toStr(mod(number,mod)));
+*/
 
 
 int size = 20;

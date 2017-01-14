@@ -16,7 +16,6 @@ a.append(3)
 a.extendAt([0,1],0)
 print(a)
 
-
 stack = list()
 stack.append(0)
 stack.append(1)
@@ -28,3 +27,4 @@ print("ab">"ba")
 
 t = TAC(Tnames.LOAD,"_t0",['INTEGER_CONST', 10])
 print(t.__copy__())
+

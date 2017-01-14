@@ -81,7 +81,7 @@ class Interpreter:
 
     @staticmethod
     def simpleTest(file,debug=False,optimize=True,inputBuffer=None)->list:
-
+        prepareForExecution = datetime.datetime.now()
         root = Interpreter.prepateAST(file)
         t = Interpreter.prepareTACgen(root)
         if debug:
@@ -107,11 +107,11 @@ class Interpreter:
             i.inputBuffer = inputBuffer
         i.globalFunctions = t.globalFunctions
         dateStart = datetime.datetime.now()
+        print("Prepared for execution in "+str(dateStart - prepareForExecution))
         if t.scopes.containsKey(t.rootLabel):
             i.interpretBlock(t.rootLabel)
         dateEnd = datetime.datetime.now()
-        print("InputDelay",i.inputDelay)
-        return [dateStart,dateEnd,dateEnd-dateStart-i.inputDelay,i.inputBuffer]
+        return [dateStart,dateEnd,dateEnd-dateStart-i.inputDelay,i.inputDelay,i.inputBuffer]
 
 
 
