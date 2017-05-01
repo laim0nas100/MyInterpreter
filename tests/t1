@@ -57,12 +57,12 @@ mod = toInt(input());
 print("Mod=" + toStr(mod(number,mod)));
 */
 
-
+print("Unicode test");
 int size = 20;
 int[size] array;
 int o = array[size-1];
 
 array = fibb(array,size);
 for(int i=0; i<size; i+=1;){
-   // print(array[i]);
+   print(array[i]);
 }

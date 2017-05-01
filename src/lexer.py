@@ -1,6 +1,6 @@
 from src.LexNames import LexName
 from src.lib import ArrayList, stringReplace
-
+from src.lib import *
 
 class Pos:
     def __init__(self,line,index):
@@ -83,9 +83,10 @@ class Token(object):
 
 class Lexer(object):
     def __init__(self, text):
-        file = open(text,"r")
-        self.lines = file.readlines()
+
+        self.lines = readListFromFile(text)
         self.lines.append("\n")
+
         self.text = self.lines[0]
         self.pos = Pos(0,0)
         self.tokenList = list()

@@ -25,6 +25,24 @@ def stringReplace(source:str,target:str,replacement="")->str:
         return source
     return new
 
+def printListToFile(filePath,array:list):
+    file = open(filePath,'w')
+    for s in array:
+        if "\n" not in s:
+            s+="\n"
+        file.write(s)
+    file.flush()
+    file.close()
+
+def readListFromFile(filePath)->list:
+    file = open(filePath,'r')
+    array = list()
+    for line in file.readlines():
+        if line.__len__()>1:
+            array.append(stringReplace(line,'\n'))
+    return array
+
+
 class ArrayList(list):
 
     def __init__(self, data=None, nullValue=" "):

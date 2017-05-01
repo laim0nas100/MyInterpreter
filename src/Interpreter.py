@@ -364,6 +364,7 @@ class Interpreter:
                 #Non block jumping command
                 self.evaluate(st)
 
+
     def evaluate(self,st:TAC):
         """Black hole all in one method" for ALL Statements"""
         if st.operation == Tnames.LOAD:
@@ -512,17 +513,3 @@ class Interpreter:
                             dest.value = dest.value // src.value
 
 
-
-
-
-# def main():
-#     while True:
-#         try:
-#             text = input('calc> ')
-#         except EOFError:
-#             break
-#         if not text:
-#             continue
-#         interpreter = Interpreter(text)
-#         result = interpreter.expr()
-#         print(result)

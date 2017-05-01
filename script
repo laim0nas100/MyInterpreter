@@ -1,0 +1,35 @@
+
+def int double(int i){
+        return i*2;
+    }
+def int[] makeArray(int size){
+    int[size] array;
+    return array;
+
+}
+
+def int[] fibb(int[] array,int ammount){
+    array[0] = 1;
+    array[1] = 1;
+    for(int i=2; i<ammount; i+=1;){
+        array[i] = array[i-1] + array[i-2];
+    }
+    return array;
+}
+def int fib(int f1,int f2,int max){
+    
+    if (f1>max){
+        return f1;
+    }
+    print(f1);
+    return fib(f2,f1+f2,max);
+}
+fib(1,1,2000000000000000);
+/*
+int i = 0;
+while(i==0){
+    print(i);
+    print(print(12));
+    input();
+}
+*/
